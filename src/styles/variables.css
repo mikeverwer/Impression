@@ -1,0 +1,134 @@
+/* ====================================================================
+   Theme tokens
+   The app sets data-theme="light" or "dark" on <html> at launch (from the
+   OS setting, or a saved preference) and updates it live. Both themes are
+   explicit; nothing is left to a media query.
+   ==================================================================== */
+
+:root,
+:root[data-theme="light"] {
+  /* Document / preview */
+  --color-bg-page:          #dcdcdc;
+  --color-bg-card:          #eaeaea;
+  --color-text:             #1b1b1b;
+  --color-body-text:        #333333;
+  --color-quote-text:       #555555;
+  --color-accent:           #0047ab;          /* Cobalt Blue */
+  --color-accent-dim:       #0047ab69;
+  --color-hover:            #ffffff55;
+  --color-shadow:           #333333aa;
+  --color-inline-code-text: #195b8b;
+  --color-inline-code-bg:   #3145490a;
+
+  /* App chrome: tab bar, status bar, resizer */
+  --ui-bg:            #cfcfcf;
+  --ui-bg-raised:     #e4e4e4;
+  --ui-border:        #b3b3b3;
+  --ui-text:          #2a2a2a;
+  --ui-text-muted:    #6a6a6a;
+  --ui-hover:         #00000012;
+
+  /* Editor surface */
+  --cm-bg:            #f3f3f3;
+  --cm-fg:            #1f1f1f;
+  --cm-gutter-bg:     #ebebeb;
+  --cm-gutter-fg:     #9a9a9a;
+  --cm-active-line:   #0047ab0c;
+  --cm-selection:     #0047ab2e;
+  --cm-match:         #0047ab22;
+  --cm-cursor:        #0047ab;
+
+  /* Editor markdown syntax */
+  --cm-heading:       #0047ab;
+  --cm-strong:        #1f1f1f;
+  --cm-emphasis:      #3a3a3a;
+  --cm-link:          #0b5cad;
+  --cm-url:           #5c7a99;
+  --cm-code:          #195b8b;
+  --cm-quote:         #5d5d5d;
+  --cm-marker:        #8a8a8a;
+
+  /* Editor fenced-code tokens */
+  --cm-keyword:       #8b2fb5;
+  --cm-string:        #2f7d32;
+  --cm-comment:       #8a8a8a;
+  --cm-number:        #b3541e;
+  --cm-type:          #9a6a00;
+  --cm-function:      #1a5fb4;
+}
+
+:root[data-theme="dark"] {
+  --color-bg-page:          #252525;
+  --color-bg-card:          #1f1f1f;
+  --color-text:             #e4e4e4;
+  --color-body-text:        #cccccc;
+  --color-quote-text:       #aaaaaa;
+  --color-accent:           #3399ff;          /* Brilliant Azure */
+  --color-accent-dim:       #3399ff96;
+  --color-hover:            #ffffff0d;
+  --color-shadow:           #cccccc55;
+  --color-inline-code-text: #8bb9e7;
+  --color-inline-code-bg:   #3145493d;
+
+  --ui-bg:            #1a1a1a;
+  --ui-bg-raised:     #2a2a2a;
+  --ui-border:        #3a3a3a;
+  --ui-text:          #d6d6d6;
+  --ui-text-muted:    #8c8c8c;
+  --ui-hover:         #ffffff14;
+
+  --cm-bg:            #1c1c1c;
+  --cm-fg:            #d8d8d8;
+  --cm-gutter-bg:     #181818;
+  --cm-gutter-fg:     #5f5f5f;
+  --cm-active-line:   #ffffff08;
+  --cm-selection:     #3399ff3a;
+  --cm-match:         #3399ff26;
+  --cm-cursor:        #3399ff;
+
+  --cm-heading:       #3399ff;
+  --cm-strong:        #f0f0f0;
+  --cm-emphasis:      #e0e0e0;
+  --cm-link:          #6db3ff;
+  --cm-url:           #7f9bb8;
+  --cm-code:          #8bb9e7;
+  --cm-quote:         #a3a3a3;
+  --cm-marker:        #6e6e6e;
+
+  --cm-keyword:       #c792ea;
+  --cm-string:        #c3e88d;
+  --cm-comment:       #7c8698;
+  --cm-number:        #f78c6c;
+  --cm-type:          #ffcb6b;
+  --cm-function:      #82aaff;
+}
+
+:root {
+  /* Fonts (system-installed; each stack has real fallbacks) */
+  --font-body:     'Rubik', 'Segoe UI', Helvetica, Arial, sans-serif;
+  --font-mono:     'Source Code Pro', 'Cascadia Code', Consolas, 'Liberation Mono', Menlo, monospace;
+  --font-markdown: 'Helvetica Neue', Helvetica, 'Segoe UI', Arial, freesans, sans-serif,
+                   'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
+}
+
+/* ====================================================================
+   Theme transition: the app's real surfaces only
+   ==================================================================== */
+
+body,
+#tabbar,
+#tabbar .tab,
+#tab-new,
+#statusbar,
+#resizer,
+#editor-pane .cm-editor,
+#editor-pane .cm-gutters,
+#preview-pane,
+#preview,
+#preview a,
+#preview kbd {
+  transition: background-color 0.3s ease,
+              color 0.3s ease,
+              border-color 0.3s ease,
+              box-shadow 0.3s ease;
+}

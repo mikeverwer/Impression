@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Markdown Editor</title>
+    <script>
+      // Resolve the theme synchronously so the first paint is already correct.
+      (function () {
+        var pref = null;
+        try { pref = localStorage.getItem("theme-preference"); } catch (e) {}
+        var dark = pref === "dark" || (pref !== "light" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+        document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="app">
+      <div id="tabbar">
+        <div id="tabs" role="tablist"></div>
+        <button id="tab-new" type="button" title="New file (Ctrl+N)" aria-label="New file">+</button>
+      </div>
+      <div id="workspace">
+        <div id="editor-pane"></div>
+        <div id="resizer" title="Drag to resize, double-click to reset"></div>
+        <div id="preview-pane">
+          <article id="preview" class="markdown-body"></article>
+        </div>
+      </div>
+      <div id="statusbar">
+        <span id="status-path"></span>
+        <span id="status-spacer"></span>
+        <span id="status-cursor"></span>
+        <span id="status-words"></span>
+      </div>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

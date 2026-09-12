@@ -1,0 +1,57 @@
+/* ====================================================================
+   Print / PDF export
+   Only the rendered preview prints. The app switches the theme to light
+   and forces <details> open in JS before calling window.print().
+   ==================================================================== */
+
+@media print {
+  @page { margin: 18mm 16mm; }
+
+  html, body {
+    height: auto;
+    overflow: visible;
+    background: #fff;
+  }
+
+  #tabbar, #statusbar, #editor-pane, #resizer { display: none !important; }
+
+  #app, #workspace { display: block; height: auto; }
+
+  #preview-pane {
+    position: static;
+    overflow: visible;
+    height: auto;
+    background: transparent;
+  }
+
+  #preview {
+    max-width: none;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    background: transparent;
+    box-shadow: none;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .markdown-body pre,
+  .markdown-body .table-wrapper,
+  .markdown-body .mermaid,
+  .markdown-body blockquote,
+  .markdown-body img,
+  .markdown-body .katex-display { break-inside: avoid; }
+
+  .markdown-body h1,
+  .markdown-body h2,
+  .markdown-body h3,
+  .markdown-body h4,
+  .markdown-body h5,
+  .markdown-body h6 { break-after: avoid; }
+
+  /* Long code lines wrap on paper instead of being clipped. */
+  .markdown-body pre { overflow: visible; }
+  .markdown-body pre > code { white-space: pre-wrap; word-break: break-word; }
+
+  .markdown-body .table-wrapper { overflow: visible; }
+}
