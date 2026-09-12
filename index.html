@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Markdown Editor</title>
+    <title>Impression</title>
     <script>
       // Resolve the theme synchronously so the first paint is already correct.
       (function () {
@@ -19,6 +19,13 @@
       <div id="tabbar">
         <div id="tabs" role="tablist"></div>
         <button id="tab-new" type="button" title="New file (Ctrl+N)" aria-label="New file">+</button>
+        <button id="toggle-preview" type="button" title="Show/hide preview (Ctrl+Shift+P)" aria-label="Show or hide preview" aria-pressed="true">
+          <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
+            <rect x="1.5" y="2.5" width="13" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+            <line x1="8" y1="2.5" x2="8" y2="13.5" stroke="currentColor" stroke-width="1.5"/>
+            <rect class="pane-fill" x="8" y="2.5" width="6.5" height="11" fill="currentColor" opacity="0.35"/>
+          </svg>
+        </button>
       </div>
       <div id="workspace">
         <div id="editor-pane"></div>

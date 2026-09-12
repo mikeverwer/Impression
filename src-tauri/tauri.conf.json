@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Markdown Editor",
+  "productName": "Impression",
   "version": "0.1.0",
-  "identifier": "com.mikeverwer.markdowneditor",
+  "identifier": "com.mikeverwer.impression",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
@@ -13,7 +13,7 @@
     "withGlobalTauri": false,
     "windows": [
       {
-        "title": "Markdown Editor",
+        "title": "Impression",
         "width": 1400,
         "height": 900,
         "minWidth": 800,

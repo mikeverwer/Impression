@@ -1,6 +1,6 @@
-# Markdown Editor
+# Impression
 
-A lightweight desktop markdown editor with a live print-style preview, built with Tauri v2 and vanilla JS.
+Impression is a lightweight desktop markdown editor with a live print-style preview, built with Tauri v2 and vanilla JS.
 
 ## Toolchain
 
@@ -54,6 +54,7 @@ Output lands in `src-tauri/target/release/bundle/`.
 |------|--------|
 | Ctrl+N / Ctrl+O / Ctrl+S / Ctrl+Shift+S | New / Open / Save / Save As |
 | Ctrl+P | Export to PDF (native print dialog) |
+| Ctrl+Shift+P | Show / hide the preview pane |
 | Ctrl+W | Close tab |
 | Ctrl+Tab, Ctrl+Shift+Tab | Next / previous tab |
 | Ctrl+B / Ctrl+I | Toggle bold / italic |

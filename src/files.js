@@ -38,7 +38,7 @@ export async function writeFile(path, text) {
  */
 export async function askSaveChanges(name) {
   const result = await message(`Save changes to "${name}"?`, {
-    title: "Markdown Editor",
+    title: "Impression",
     kind: "warning",
     buttons: "YesNoCancel",
   });
@@ -48,5 +48,5 @@ export async function askSaveChanges(name) {
 }
 
 export async function showError(text) {
-  await message(text, { title: "Markdown Editor", kind: "error" });
+  await message(text, { title: "Impression", kind: "error" });
 }

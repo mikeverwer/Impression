@@ -121,10 +121,45 @@ function scheduleRender() {
   renderTimer = setTimeout(() => renderNow(), RENDER_DELAY);
 }
 
+// ---- preview visibility ---------------------------------------------------
+
+const PREVIEW_KEY = "preview-visible";
+let previewVisible = true;
+let previewStale = false; // edits happened while the preview was hidden
+
+function setPreviewVisible(visible, persist = true) {
+  previewVisible = visible;
+  document.body.classList.toggle("preview-hidden", !visible);
+  $("toggle-preview").setAttribute("aria-pressed", String(visible));
+  if (persist) {
+    try {
+      localStorage.setItem(PREVIEW_KEY, visible ? "1" : "0");
+    } catch {
+      /* ignore */
+    }
+  }
+  view.requestMeasure();
+  if (visible && previewStale) renderNow();
+  else if (visible) sync.refresh();
+}
+
+try {
+  if (localStorage.getItem(PREVIEW_KEY) === "0") setPreviewVisible(false, false);
+} catch {
+  /* ignore */
+}
+
 /** Render the active document into the preview. Resolves when Mermaid/KaTeX are done. */
 async function renderNow(theme = currentTheme()) {
   clearTimeout(renderTimer);
   if (!active) return;
+  if (!previewVisible) {
+    // Skip the work while hidden; catch up when the pane is shown again.
+    previewStale = true;
+    updateWordCount();
+    return;
+  }
+  previewStale = false;
   const generation = ++renderGeneration;
   const isStale = () => generation !== renderGeneration;
 
@@ -274,7 +309,7 @@ async function saveDoc(doc, forceDialog = false) {
 
 function refreshChrome() {
   tabBar.render(docs, active);
-  const title = active ? `${active.dirty ? "• " : ""}${active.name} — Markdown Editor` : "Markdown Editor";
+  const title = active ? `${active.dirty ? "• " : ""}${active.name} — Impression` : "Impression";
   if (tauriWindow) tauriWindow.setTitle(title).catch(() => {});
   document.title = title;
   statusPath.textContent = active ? active.path || active.name : "";
@@ -310,6 +345,7 @@ const actions = {
   "theme-light": () => applyThemePreference("light"),
   "theme-dark": () => applyThemePreference("dark"),
   "reset-split": () => setSplit(50),
+  "toggle-preview": () => setPreviewVisible(!previewVisible),
 };
 
 // A native accelerator and the in-page key handler can both fire for one
@@ -338,6 +374,7 @@ const SHORTCUTS = {
   "ctrl+s": "save",
   "ctrl+shift+s": "save-as",
   "ctrl+p": "export-pdf",
+  "ctrl+shift+p": "toggle-preview",
   "ctrl+w": "close-tab",
   "ctrl+tab": "next-tab",
   "ctrl+shift+tab": "prev-tab",
@@ -356,6 +393,7 @@ window.addEventListener("keydown", (e) => {
 });
 
 $("tab-new").addEventListener("click", () => runAction("new", "button"));
+$("toggle-preview").addEventListener("click", () => runAction("toggle-preview", "button"));
 
 // ---------------------------------------------------------------------------
 // Preview interactions: links and the context menu

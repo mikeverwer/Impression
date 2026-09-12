@@ -56,9 +56,10 @@ export async function installAppMenu(run, themePref) {
   const view = await Submenu.new({
     text: "&View",
     items: [
-      await Submenu.new({ text: "&Theme", items: [themeItems.system, themeItems.light, themeItems.dark] }),
-      await separator(),
+      await item("toggle-preview", "Toggle &Preview", "CmdOrCtrl+Shift+P"),
       await item("reset-split", "&Reset Split"),
+      await separator(),
+      await Submenu.new({ text: "&Theme", items: [themeItems.system, themeItems.light, themeItems.dark] }),
     ],
   });
 

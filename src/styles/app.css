@@ -105,6 +105,27 @@ body {
 }
 #tab-new:hover { background: var(--ui-hover); color: var(--ui-text); }
 
+#toggle-preview {
+  flex: none;
+  width: 34px;
+  border: 0;
+  border-left: 1px solid var(--ui-border);
+  background: transparent;
+  color: var(--ui-text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#toggle-preview:hover { background: var(--ui-hover); color: var(--ui-text); }
+#toggle-preview[aria-pressed="true"] { color: var(--color-accent); }
+#toggle-preview[aria-pressed="false"] .pane-fill { opacity: 0; }
+
+/* Preview hidden: the editor takes the full width. */
+body.preview-hidden #resizer,
+body.preview-hidden #preview-pane { display: none; }
+body.preview-hidden #editor-pane { flex: 1 1 auto; }
+
 /* ---------- Split pane ------------------------------------------- */
 
 #workspace {

@@ -1,13 +1,13 @@
 [package]
-name = "markdown-editor"
+name = "impression"
 version = "0.1.0"
-description = "Lightweight markdown editor with live preview"
+description = "Impression: a lightweight markdown editor with live print-style preview"
 authors = ["Mike Verwer"]
 edition = "2021"
 
 [lib]
 # The `_lib` suffix keeps the lib name distinct from the bin name on Windows.
-name = "markdown_editor_lib"
+name = "impression_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
