@@ -18,6 +18,7 @@ import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirro
 import { syntaxHighlighting, HighlightStyle, bracketMatching, indentOnInput, indentUnit } from "@codemirror/language";
 import { searchKeymap, highlightSelectionMatches } from "@codemirror/search";
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
+import { css } from "@codemirror/lang-css";
 import { languages } from "@codemirror/language-data";
 import { tags as t } from "@lezer/highlight";
 
@@ -169,14 +170,30 @@ export const toggleItalic = (view) => toggleMark(view, 1);
 
 // ---------------------------------------------------------------------------
 
+// Per-document language: markdown (with native spellcheck) or CSS.
+const languageCompartment = new Compartment();
+
+function languageFor(kind) {
+  if (kind === "css") {
+    return [css(), EditorView.contentAttributes.of({ spellcheck: "false" })];
+  }
+  return [
+    markdown({ base: markdownLanguage, codeLanguages: languages, addKeymap: true }),
+    // Native spellcheck: WebView2 is Chromium, so this uses the OS engine.
+    EditorView.contentAttributes.of({ spellcheck: "true", autocorrect: "off", autocapitalize: "off" }),
+  ];
+}
+
 /**
  * Create the editor. Returns { view, newState, setTheme }.
  * `keys` is a list of extra keymap bindings; `onUpdate` receives every
- * ViewUpdate.
+ * ViewUpdate. `newState(text, kind)` builds a state for a "markdown" or
+ * "css" document.
  */
 export function createEditor({ parent, theme, keys = [], onUpdate }) {
-  const extensions = [
+  const extensionsFor = (kind) => [
     themeCompartment.of(themes[theme] || themes.light),
+    languageCompartment.of(languageFor(kind)),
     lineNumbers(),
     highlightActiveLineGutter(),
     highlightSpecialChars(),
@@ -192,19 +209,13 @@ export function createEditor({ parent, theme, keys = [], onUpdate }) {
     highlightActiveLine(),
     highlightSelectionMatches(),
     EditorView.lineWrapping,
-    // Native spellcheck: WebView2 is Chromium, so this uses the OS engine.
-    EditorView.contentAttributes.of({
-      spellcheck: "true",
-      autocorrect: "off",
-      autocapitalize: "off",
-    }),
-    markdown({ base: markdownLanguage, codeLanguages: languages, addKeymap: true }),
     syntaxHighlighting(highlightStyle),
     keymap.of([...keys, ...defaultKeymap, ...historyKeymap, ...searchKeymap, indentWithTab]),
     EditorView.updateListener.of((update) => onUpdate && onUpdate(update)),
   ];
 
-  const newState = (text = "") => EditorState.create({ doc: text, extensions });
+  const newState = (text = "", kind = "markdown") =>
+    EditorState.create({ doc: text, extensions: extensionsFor(kind) });
   const view = new EditorView({ parent, state: newState("") });
 
   const setTheme = (name) => {

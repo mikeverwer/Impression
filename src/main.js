@@ -1,10 +1,8 @@
 // Application entry point: wires the editor, preview, tabs, menus, file
-// operations and keyboard shortcuts together.
+// operations, stylesheets and keyboard shortcuts together.
 
 import "./styles/variables.css";
 import "./styles/app.css";
-import "./styles/markdown.css";
-import "./styles/hljs.css";
 import "./styles/print.css";
 import "katex/dist/katex.min.css";
 
@@ -14,6 +12,7 @@ import { createEditor, toggleBold, toggleItalic } from "./editor.js";
 import { ScrollSync } from "./sync.js";
 import { TabBar } from "./tabs.js";
 import { exportPdf } from "./print.js";
+import * as styles from "./styles.js";
 import sampleText from "./sample.md?raw";
 
 const isTauri = Boolean(window.__TAURI_INTERNALS__);
@@ -22,11 +21,11 @@ const isTauri = Boolean(window.__TAURI_INTERNALS__);
 // browser (handy for working on the frontend with `npm run dev`).
 let files = null;
 let tauriWindow = null;
-let openUrl = null;
+let opener = null;
 if (isTauri) {
   files = await import("./files.js");
   tauriWindow = (await import("@tauri-apps/api/window")).getCurrentWindow();
-  openUrl = (await import("@tauri-apps/plugin-opener")).openUrl;
+  opener = await import("@tauri-apps/plugin-opener");
 }
 
 // ---------------------------------------------------------------------------
@@ -48,13 +47,18 @@ const statusWords = $("status-words");
 let docSeq = 0;
 let untitledSeq = 0;
 
+function kindOf(path) {
+  return /\.css$/i.test(path || "") ? "css" : "markdown";
+}
+
 class Doc {
-  constructor({ path = null, text = "", eol = "\n" } = {}) {
+  constructor({ path = null, text = "", eol = "\n", kind = kindOf(path) } = {}) {
     this.id = ++docSeq;
     this.path = path;
     this.eol = eol;
+    this.kind = kind;
     this.untitled = path ? 0 : ++untitledSeq;
-    this.state = editor.newState(text);
+    this.state = editor.newState(text, kind);
     this.savedDoc = path ? this.state.doc : null;
     this.dirty = false;
     this.editorScroll = 0;
@@ -62,7 +66,7 @@ class Doc {
   }
 
   get name() {
-    if (this.path) return files ? files.baseName(this.path) : this.path.split(/[\\/]/).pop();
+    if (this.path) return this.path.split(/[\\/]/).pop();
     return this.untitled > 1 ? `Untitled ${this.untitled}` : "Untitled";
   }
 
@@ -77,6 +81,7 @@ class Doc {
 
 const docs = [];
 let active = null;
+let lastMarkdownDoc = null; // what the preview shows while a CSS tab is active
 
 // ---------------------------------------------------------------------------
 // Editor
@@ -87,15 +92,16 @@ const editor = createEditor({
   parent: editorPane,
   theme: currentTheme(),
   keys: [
-    { key: "Mod-b", run: (v) => (runAction("bold", "key"), true) },
-    { key: "Mod-i", run: (v) => (runAction("italic", "key"), true) },
+    { key: "Mod-b", run: () => (runAction("bold", "key"), true) },
+    { key: "Mod-i", run: () => (runAction("italic", "key"), true) },
   ],
   onUpdate(update) {
     if (!active) return;
     active.state = update.state;
     if (update.docChanged) {
       active.updateDirty();
-      scheduleRender();
+      if (active.kind === "css") scheduleStyleApply();
+      else scheduleRender();
       refreshChrome();
     }
     if (update.docChanged || update.selectionSet) updateCursorStatus();
@@ -119,6 +125,12 @@ const RENDER_DELAY = 200;
 function scheduleRender() {
   clearTimeout(renderTimer);
   renderTimer = setTimeout(() => renderNow(), RENDER_DELAY);
+}
+
+/** The document the preview should show. */
+function previewDoc() {
+  if (active && active.kind === "markdown") return active;
+  return lastMarkdownDoc;
 }
 
 // ---- preview visibility ---------------------------------------------------
@@ -149,7 +161,7 @@ try {
   /* ignore */
 }
 
-/** Render the active document into the preview. Resolves when Mermaid/KaTeX are done. */
+/** Render into the preview. Resolves when Mermaid/KaTeX are done. */
 async function renderNow(theme = currentTheme()) {
   clearTimeout(renderTimer);
   if (!active) return;
@@ -163,7 +175,8 @@ async function renderNow(theme = currentTheme()) {
   const generation = ++renderGeneration;
   const isStale = () => generation !== renderGeneration;
 
-  preview.innerHTML = renderMarkdown(active.text());
+  const source = previewDoc();
+  preview.innerHTML = renderMarkdown(source ? source.text() : sampleText);
   updateWordCount();
   sync.refresh();
   if (sync.master === "editor") sync.editorToPreview();
@@ -193,6 +206,8 @@ function activate(doc) {
     active.previewScroll = previewPane.scrollTop;
   }
   active = doc;
+  if (doc.kind === "markdown") lastMarkdownDoc = doc;
+  sync.enabled = doc.kind === "markdown";
   view.setState(doc.state);
   editor.setTheme(currentTheme());
   renderNow().then(() => {
@@ -209,6 +224,7 @@ function addDoc(opts) {
   const doc = new Doc(opts);
   // Opening a file into a pristine, lone Untitled tab replaces that tab.
   if (opts && opts.path && docs.length === 1 && !docs[0].path && !docs[0].dirty) {
+    if (lastMarkdownDoc === docs[0]) lastMarkdownDoc = null;
     docs.length = 0;
     active = null;
   }
@@ -235,13 +251,19 @@ async function closeDoc(doc) {
   const index = docs.indexOf(doc);
   if (index < 0) return true;
   docs.splice(index, 1);
+  if (lastMarkdownDoc === doc) {
+    lastMarkdownDoc = docs.filter((d) => d.kind === "markdown").pop() || null;
+  }
   if (active === doc) {
     active = null;
     if (docs.length === 0) newDoc();
     else activate(docs[Math.min(index, docs.length - 1)]);
   } else {
     refreshChrome();
+    if (active && active.kind === "css") renderNow();
   }
+  // A closed stylesheet tab may have left unsaved changes applied to the preview.
+  if (doc.kind === "css" && styles.isActivePath(doc.path)) styles.reload();
   return true;
 }
 
@@ -270,14 +292,15 @@ async function openFiles() {
 }
 
 async function openPath(path) {
-  const existing = docs.find((d) => d.path === path);
+  const existing = docs.find((d) => d.path && d.path.toLowerCase() === path.toLowerCase());
   if (existing) return activate(existing);
   try {
     const raw = await files.readFile(path);
-    addDoc({ path, text: raw, eol: raw.includes("\r\n") ? "\r\n" : "\n" });
+    return addDoc({ path, text: raw, eol: raw.includes("\r\n") ? "\r\n" : "\n" });
   } catch (err) {
     console.error(err);
     await files.showError(`Could not open ${path}\n\n${err}`);
+    return null;
   }
 }
 
@@ -285,7 +308,8 @@ async function saveDoc(doc, forceDialog = false) {
   if (!files) return console.warn("Saving needs the Tauri runtime."), false;
   let path = doc.path;
   if (!path || forceDialog) {
-    path = await files.pickSavePath(doc.path || `${doc.name}.md`);
+    const ext = doc.kind === "css" ? ".css" : ".md";
+    path = await files.pickSavePath(doc.path || `${doc.name}${ext}`, doc.kind);
     if (!path) return false;
   }
   let text = doc.text();
@@ -298,10 +322,69 @@ async function saveDoc(doc, forceDialog = false) {
     return false;
   }
   doc.path = path;
+  doc.kind = kindOf(path);
   doc.savedDoc = doc.state.doc;
   doc.updateDirty();
   refreshChrome();
+  if (doc.kind === "css" && styles.nameFor(path)) refreshStyleList();
   return true;
+}
+
+// ---------------------------------------------------------------------------
+// Preview stylesheets
+
+let styleTimer = null;
+
+/** Apply the CSS being edited to the preview, if it is the active stylesheet. */
+function scheduleStyleApply() {
+  clearTimeout(styleTimer);
+  styleTimer = setTimeout(() => {
+    if (active && active.kind === "css" && styles.isActivePath(active.path)) styles.apply(active.text());
+  }, RENDER_DELAY);
+}
+
+async function selectStyle(name) {
+  const applied = await styles.select(name);
+  // If the newly selected sheet is open in a tab with edits, show those edits.
+  const openTab = docs.find((d) => d.kind === "css" && styles.isActivePath(d.path));
+  if (openTab && openTab.dirty) styles.apply(openTab.text());
+  if (appMenu) appMenu.setStyleChecked(applied).catch(() => {});
+}
+
+async function refreshStyleList() {
+  if (!appMenu || !isTauri) return;
+  try {
+    await appMenu.setStyleList(await styles.list(), styles.activeStyleName());
+  } catch (err) {
+    console.warn("Could not refresh style list", err);
+  }
+}
+
+/**
+ * Edit Preview Styles: opens user_styles.css (creating it from the default
+ * if needed). With one other stylesheet in the folder that one is opened;
+ * with several, a picker asks which.
+ */
+async function editStyles() {
+  if (!files) return console.warn("Stylesheet editing needs the Tauri runtime.");
+  const candidates = (await styles.list()).filter((n) => n !== styles.DEFAULT_NAME);
+  let path;
+  if (candidates.length === 0) path = await styles.ensureUserSheet();
+  else if (candidates.length === 1) path = styles.pathFor(candidates[0]);
+  else {
+    path = await files.pickStylesheet(styles.stylesDir());
+    if (!path) return;
+  }
+  const doc = await openPath(path);
+  if (!doc) return;
+  const name = styles.nameFor(path);
+  if (name && name.toLowerCase() !== styles.activeStyleName().toLowerCase()) await selectStyle(name);
+  refreshStyleList();
+}
+
+function openStylesFolder() {
+  if (!opener || !styles.stylesDir()) return;
+  opener.revealItemInDir(styles.pathFor(styles.DEFAULT_NAME)).catch((err) => console.warn("reveal failed", err));
 }
 
 // ---------------------------------------------------------------------------
@@ -322,7 +405,12 @@ function updateCursorStatus() {
 }
 
 function updateWordCount() {
-  const words = active ? (active.text().match(/\S+/g) || []).length : 0;
+  const source = previewDoc();
+  if (!source) {
+    statusWords.textContent = "";
+    return;
+  }
+  const words = (source.text().match(/\S+/g) || []).length;
   statusWords.textContent = `${words} word${words === 1 ? "" : "s"}`;
 }
 
@@ -346,6 +434,9 @@ const actions = {
   "theme-dark": () => applyThemePreference("dark"),
   "reset-split": () => setSplit(50),
   "toggle-preview": () => setPreviewVisible(!previewVisible),
+  "edit-styles": () => editStyles(),
+  "refresh-styles": () => refreshStyleList(),
+  "open-styles-folder": () => openStylesFolder(),
 };
 
 // A native accelerator and the in-page key handler can both fire for one
@@ -353,7 +444,7 @@ const actions = {
 // source within a short window.
 const lastRun = new Map();
 function runAction(id, source = "key") {
-  const fn = actions[id];
+  const fn = id.startsWith("style:") ? () => selectStyle(id.slice("style:".length)) : actions[id];
   if (!fn) return;
   const now = performance.now();
   const last = lastRun.get(id);
@@ -375,6 +466,7 @@ const SHORTCUTS = {
   "ctrl+shift+s": "save-as",
   "ctrl+p": "export-pdf",
   "ctrl+shift+p": "toggle-preview",
+  "ctrl+shift+e": "edit-styles",
   "ctrl+w": "close-tab",
   "ctrl+tab": "next-tab",
   "ctrl+shift+tab": "prev-tab",
@@ -384,8 +476,7 @@ const SHORTCUTS = {
 
 window.addEventListener("keydown", (e) => {
   if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
-  const key = e.key.length === 1 ? e.key.toLowerCase() : e.key.toLowerCase();
-  const combo = `ctrl+${e.shiftKey ? "shift+" : ""}${key}`;
+  const combo = `ctrl+${e.shiftKey ? "shift+" : ""}${e.key.toLowerCase()}`;
   const id = SHORTCUTS[combo];
   if (!id) return;
   e.preventDefault();
@@ -417,7 +508,7 @@ preview.addEventListener("click", (e) => {
     return;
   }
   e.preventDefault();
-  if (openUrl) openUrl(href).catch((err) => console.warn("openUrl failed", err));
+  if (opener) opener.openUrl(href).catch((err) => console.warn("openUrl failed", err));
 });
 
 let contextMenu = null;
@@ -477,12 +568,19 @@ resizer.addEventListener("dblclick", () => setSplit(50));
 window.addEventListener("resize", () => sync.refresh());
 
 // ---------------------------------------------------------------------------
-// Tauri integration: menus, close handling
+// Tauri integration: stylesheets, menus, close handling
 
 if (isTauri) {
   try {
+    await styles.init();
+  } catch (err) {
+    console.error("Stylesheet setup failed", err);
+  }
+
+  try {
     const menu = await import("./menu.js");
     appMenu = await menu.installAppMenu(runAction, themePreference());
+    await refreshStyleList();
     contextMenu = await menu.createPreviewContextMenu(() => {
       if (jumpTarget !== null) sync.jumpTo(jumpTarget);
     });
@@ -492,6 +590,11 @@ if (isTauri) {
 
   tauriWindow.onCloseRequested(async (event) => {
     if (!(await closeAll())) event.preventDefault();
+  });
+
+  // Pick up stylesheets added or removed outside the app.
+  tauriWindow.onFocusChanged(({ payload: focused }) => {
+    if (focused) refreshStyleList();
   });
 }
 
@@ -503,5 +606,5 @@ else newDoc();
 
 // Dev-only console hook for poking at the running app.
 if (import.meta.env.DEV) {
-  window.__app = { view, sync, docs: () => docs, active: () => active, runAction, renderNow, toggleBold, toggleItalic };
+  window.__app = { view, sync, styles, docs: () => docs, active: () => active, runAction, renderNow, toggleBold, toggleItalic };
 }

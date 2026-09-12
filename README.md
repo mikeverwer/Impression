@@ -41,12 +41,21 @@ Output lands in `src-tauri/target/release/bundle/`.
 | `src/files.js` | Open/save dialogs and file I/O (Tauri dialog + fs plugins) |
 | `src/print.js` | PDF export: light theme, force `<details>` open, `window.print()` |
 | `src/theme.js` | OS theme detection, live updates, saved preference |
+| `src/styles.js` | Preview stylesheet manager: styles folder, default/user sheets, live apply |
 | `src/styles/variables.css` | Light/dark tokens and theme transitions |
-| `src/styles/markdown.css` | Preview stylesheet (trimmed from the site's `markdown-styles.css`) |
-| `src/styles/hljs.css` | Dedicated `--hl-*` syntax token colours |
-| `src/styles/print.css` | `@media print` rules |
+| `src/styles/preview.css` | Built-in preview stylesheet: document styles, `--hl-*` token colours, page setup (user-editable copy) |
+| `src/styles/print.css` | `@media print` rules that hide the app chrome |
 | `src-tauri/` | Rust side: plugin registration only |
 | `styles/markdown-styles.css` | Original reference stylesheet from the site (not loaded by the app) |
+
+## Preview stylesheets
+
+The preview (and the PDF) is styled by one stylesheet at a time. View > Preview Style lists what's available:
+
+- **Default** is built into the app and also written to `%APPDATA%\com.mikeverwer.impression\styles\default.css` on every launch, so it is always pristine.
+- **Edit Preview Styles** (Ctrl+Shift+E) opens `user_styles.css` in a tab, creating it from the default the first time. If other `.css` files exist in the folder it opens the only one, or asks which to edit when there are several.
+- Any `.css` file you drop into the styles folder appears in the list after Refresh List (or the next time the window gets focus).
+- Edits to the active stylesheet apply to the preview live; Ctrl+S saves them. While a stylesheet tab is active the preview keeps showing your most recent markdown document.
 
 ## Shortcuts
 
@@ -55,6 +64,7 @@ Output lands in `src-tauri/target/release/bundle/`.
 | Ctrl+N / Ctrl+O / Ctrl+S / Ctrl+Shift+S | New / Open / Save / Save As |
 | Ctrl+P | Export to PDF (native print dialog) |
 | Ctrl+Shift+P | Show / hide the preview pane |
+| Ctrl+Shift+E | Edit preview styles |
 | Ctrl+W | Close tab |
 | Ctrl+Tab, Ctrl+Shift+Tab | Next / previous tab |
 | Ctrl+B / Ctrl+I | Toggle bold / italic |

@@ -1,8 +1,14 @@
 /* ====================================================================
-   Preview stylesheet
-   Derived from the site's markdown-styles.css, trimmed for a print-preview
-   pane: no anchor icons, copy buttons, details toggles, hover effects, or
-   PrettyLights (.pl-*) rules. Token colors for code live in hljs.css.
+   Impression preview stylesheet
+   This file styles the rendered preview and, since the preview is a
+   print preview, the exported PDF. It is the built-in default; the app
+   copies it into the styles folder as default.css (kept pristine) and
+   creates user_styles.css from it the first time you choose
+   View > Preview Style > Edit Preview Styles.
+
+   Theme tokens such as --color-accent are defined by the app for the
+   light and dark themes; override them here if you want, e.g.
+     :root[data-theme="light"] { --color-accent: #b00; }
    ==================================================================== */
 
 .markdown-body {
@@ -263,4 +269,120 @@
 
   /* ---------- Math (KaTeX) */
   .katex-display { overflow-x: auto; overflow-y: hidden; padding: 0.2em 0; }
+}
+
+
+/* ====================================================================
+   Syntax highlighting (highlight.js token colours)
+   The code-block background is one fixed dark hue in both themes, so
+   these are defined once.
+   ==================================================================== */
+
+:root {
+  --hl-keyword:     #c792ea;
+  --hl-string:      #c3e88d;
+  --hl-comment:     #7f8a9d;
+  --hl-number:      #f78c6c;
+  --hl-function:    #82aaff;
+  --hl-type:        #ffcb6b;
+  --hl-attribute:   #80cbc4;
+  --hl-builtin:     #89ddff;
+  --hl-literal:     #ff9cac;
+  --hl-regex:       #f07178;
+  --hl-variable:    #ffab91;
+  --hl-punctuation: #b2ccd6;
+  --hl-tag:         #f07178;
+  --hl-meta:        #ffcb6b;
+}
+
+.hljs { color: #eeffff; }
+
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-doctag,
+.hljs-operator { color: var(--hl-keyword); }
+
+.hljs-string,
+.hljs-addition { color: var(--hl-string); }
+
+.hljs-comment,
+.hljs-quote { color: var(--hl-comment); font-style: italic; }
+
+.hljs-number,
+.hljs-symbol,
+.hljs-bullet { color: var(--hl-number); }
+
+.hljs-title,
+.hljs-title.function_,
+.hljs-section { color: var(--hl-function); }
+
+.hljs-title.class_,
+.hljs-title.class_.inherited__,
+.hljs-type,
+.hljs-class { color: var(--hl-type); }
+
+.hljs-attr,
+.hljs-attribute,
+.hljs-property,
+.hljs-selector-attr,
+.hljs-selector-class,
+.hljs-selector-id,
+.hljs-selector-pseudo { color: var(--hl-attribute); }
+
+.hljs-built_in { color: var(--hl-builtin); }
+
+.hljs-literal { color: var(--hl-literal); }
+
+.hljs-regexp,
+.hljs-deletion { color: var(--hl-regex); }
+
+.hljs-variable,
+.hljs-variable.language_,
+.hljs-template-variable,
+.hljs-params { color: var(--hl-variable); }
+
+.hljs-punctuation,
+.hljs-tag { color: var(--hl-punctuation); }
+
+.hljs-tag .hljs-name,
+.hljs-name { color: var(--hl-tag); }
+
+.hljs-meta,
+.hljs-meta .hljs-keyword,
+.hljs-meta .hljs-string { color: var(--hl-meta); }
+
+.hljs-emphasis { font-style: italic; }
+.hljs-strong   { font-weight: bold; }
+.hljs-link     { text-decoration: underline; }
+
+/* ====================================================================
+   Print / PDF: page setup and page-break behaviour
+   ==================================================================== */
+
+@media print {
+  @page { margin: 18mm 16mm; }
+
+  .markdown-body {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .markdown-body pre,
+  .markdown-body .table-wrapper,
+  .markdown-body .mermaid,
+  .markdown-body blockquote,
+  .markdown-body img,
+  .markdown-body .katex-display { break-inside: avoid; }
+
+  .markdown-body h1,
+  .markdown-body h2,
+  .markdown-body h3,
+  .markdown-body h4,
+  .markdown-body h5,
+  .markdown-body h6 { break-after: avoid; }
+
+  /* Long code lines wrap on paper instead of being clipped. */
+  .markdown-body pre { overflow: visible; }
+  .markdown-body pre > code { white-space: pre-wrap; word-break: break-word; }
+  .markdown-body .table-wrapper { overflow: visible; }
 }

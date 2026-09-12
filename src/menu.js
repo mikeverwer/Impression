@@ -53,12 +53,28 @@ export async function installAppMenu(run, themePref) {
     });
   }
 
+  // Preview Style submenu: fixed commands around a rebuildable list of
+  // stylesheet radio items.
+  const styleMenu = await Submenu.new({
+    text: "Preview &Style",
+    items: [
+      await item("edit-styles", "&Edit Preview Styles…", "CmdOrCtrl+Shift+E"),
+      await separator(),
+      // stylesheet items are inserted here (index 2)
+      await separator(),
+      await item("refresh-styles", "&Refresh List"),
+      await item("open-styles-folder", "&Open Styles Folder"),
+    ],
+  });
+  let styleItems = [];
+
   const view = await Submenu.new({
     text: "&View",
     items: [
       await item("toggle-preview", "Toggle &Preview", "CmdOrCtrl+Shift+P"),
       await item("reset-split", "&Reset Split"),
       await separator(),
+      styleMenu,
       await Submenu.new({ text: "&Theme", items: [themeItems.system, themeItems.light, themeItems.dark] }),
     ],
   });
@@ -70,6 +86,30 @@ export async function installAppMenu(run, themePref) {
   return {
     async setThemeChecked(pref) {
       for (const [id, it] of Object.entries(themeItems)) await it.setChecked(id === pref);
+    },
+
+    /** Replace the stylesheet radio items with `names`, checking `activeName`. */
+    async setStyleList(names, activeName) {
+      for (const it of styleItems) await styleMenu.remove(it);
+      styleItems = [];
+      for (const name of names) {
+        styleItems.push(
+          await CheckMenuItem.new({
+            id: `style:${name}`,
+            text: name === "default.css" ? "Default (default.css)" : name,
+            checked: name.toLowerCase() === activeName.toLowerCase(),
+            action: () => run(`style:${name}`, "menu"),
+          })
+        );
+      }
+      await styleMenu.insert(styleItems, 2);
+    },
+
+    async setStyleChecked(activeName) {
+      for (const it of styleItems) {
+        const name = it.id.slice("style:".length);
+        await it.setChecked(name.toLowerCase() === activeName.toLowerCase());
+      }
     },
   };
 }

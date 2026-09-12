@@ -28,6 +28,7 @@ export class ScrollSync {
     this.entries = [];
     this.master = "editor"; // which pane the user is driving
     this.pending = null;
+    this.enabled = true; // false while the editor shows something other than the previewed document
 
     editorPane.addEventListener("pointerenter", () => (this.master = "editor"));
     editorPane.addEventListener("keydown", () => (this.master = "editor"));
@@ -145,7 +146,7 @@ export class ScrollSync {
   // ---- sync -------------------------------------------------------------
 
   editorToPreview() {
-    if (!this.entries.length) return;
+    if (!this.enabled || !this.entries.length) return;
     const line = this.editorTopLine();
     const target = this.lineToOffset(line);
     const max = this.previewPane.scrollHeight - this.previewPane.clientHeight;
@@ -153,7 +154,7 @@ export class ScrollSync {
   }
 
   previewToEditor() {
-    if (!this.entries.length) return;
+    if (!this.enabled || !this.entries.length) return;
     const line = this.offsetToLine(this.previewPane.scrollTop);
     this.scrollEditorToLine(line);
   }
@@ -165,6 +166,7 @@ export class ScrollSync {
    * Returns null when nothing under the point maps to source.
    */
   locate(clientX, clientY) {
+    if (!this.enabled) return null;
     const hit = document.elementFromPoint(clientX, clientY);
     let el = hit && hit.closest ? hit.closest("[data-source-line]") : null;
     if (el && !this.preview.contains(el)) el = null;
