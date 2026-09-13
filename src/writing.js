@@ -258,6 +258,10 @@ const theme = EditorView.theme({
     "--wm-function": "var(--hl-function, var(--cm-function))",
     "--wm-punctuation": "var(--hl-punctuation, var(--cm-marker))",
   },
+  // Line backgrounds paint over CodeMirror's selection layer (which sits
+  // behind the text), so the opaque code slab would hide selections. Lift
+  // the layer above the text; the selection colour is translucent.
+  ".cm-selectionLayer": { zIndex: "1 !important" }, // CodeMirror sets -1 inline
   ".cm-wm-codeblock-first": { borderRadius: "3px 3px 0 0", paddingTop: "6px" },
   ".cm-wm-codeblock-last": { borderRadius: "0 0 3px 3px", paddingBottom: "6px" },
   "&.cm-focused .cm-wm-codeblock.cm-activeLine, .cm-wm-codeblock.cm-activeLine": {

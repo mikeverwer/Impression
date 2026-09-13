@@ -56,6 +56,10 @@ The preview (and the PDF) is styled by one stylesheet at a time. View > Preview 
 - Any `.css` file you drop into the styles folder appears in the list after Refresh List (or the next time the window gets focus).
 - Edits to the active stylesheet apply to the preview live; Ctrl+S saves them. While a stylesheet tab is active the preview keeps showing your most recent markdown document.
 
+## Outline
+
+The button at the left end of the tab bar, View > Outline, or Ctrl+Shift+O slides in a heading outline to the left of the editor. Headings nest by level with collapsible subtrees (collapse state is kept per tab), the heading containing the cursor is highlighted, and clicking one scrolls the editor (and the preview through scroll sync) to it without moving the cursor.
+
 ## Writing mode
 
 View > Writing Mode (Ctrl+Shift+W) collapses the preview and renders markdown inline in the editor, Obsidian-style: heading, emphasis, code, link and strikethrough markers are hidden, `>` becomes a quote bar, bullets become •, task markers become clickable checkboxes and `---` becomes a rule. The line under the cursor always shows its raw source. Fenced code, tables, math, images, footnotes and definition lists stay as source (the preview and PDF still render them). Turning the mode off restores the preview.
@@ -72,6 +76,7 @@ Chromium's print dialog adds date/title headers and footers by default. Untick "
 | Ctrl+P | Export to PDF (native print dialog) |
 | Ctrl+Shift+P | Show / hide the preview pane |
 | Ctrl+Shift+W | Writing mode (inline rendering, preview collapsed) |
+| Ctrl+Shift+O | Show / hide the outline |
 | Ctrl+Shift+E | Edit preview styles |
 | Ctrl+Shift+. / Ctrl+Shift+, | Editor font size up / down (also Ctrl+wheel over the editor; reset via View menu) |
 | Ctrl+Shift+] / Ctrl+Shift+[ | Preview zoom in / out (also Ctrl+wheel over the preview; reset via View menu) |

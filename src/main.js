@@ -11,6 +11,8 @@ import { renderMarkdown, enhance } from "./render.js";
 import { createEditor, toggleBold, toggleItalic } from "./editor.js";
 import { ScrollSync } from "./sync.js";
 import { TabBar } from "./tabs.js";
+import { OutlinePanel, extractHeadings } from "./outline.js";
+import { EditorView } from "@codemirror/view";
 import { exportPdf } from "./print.js";
 import * as styles from "./styles.js";
 import sampleText from "./sample.md?raw";
@@ -82,6 +84,7 @@ class Doc {
     this.dirty = false;
     this.editorScroll = 0;
     this.previewScroll = 0;
+    this.outlineCollapsed = new Set();
   }
 
   get name() {
@@ -120,10 +123,16 @@ const editor = createEditor({
     if (update.docChanged) {
       active.updateDirty();
       if (active.kind === "css") scheduleStyleApply();
-      else scheduleRender();
+      else {
+        scheduleRender();
+        scheduleOutline();
+      }
       refreshChrome();
     }
-    if (update.docChanged || update.selectionSet) updateCursorStatus();
+    if (update.docChanged || update.selectionSet) {
+      updateCursorStatus();
+      outline.setActive(update.state.selection.main.head);
+    }
   },
 });
 const view = editor.view;
@@ -133,6 +142,60 @@ const tabBar = new TabBar($("tabs"), {
   onSelect: (doc) => activate(doc),
   onClose: (doc) => closeDoc(doc),
 });
+
+// ---------------------------------------------------------------------------
+// Outline
+
+const OUTLINE_KEY = "outline-visible";
+let outlineVisible = false;
+let outlineTimer = null;
+
+const outline = new OutlinePanel($("outline-tree"), {
+  onSelect(heading) {
+    // Bring the heading to the top of the editor without moving the cursor;
+    // scroll sync then carries the preview along.
+    sync.master = "editor";
+    view.dispatch({ effects: EditorView.scrollIntoView(heading.from, { y: "start", yMargin: 8 }) });
+    view.focus();
+  },
+});
+
+function refreshOutline() {
+  clearTimeout(outlineTimer);
+  if (!active || !outlineVisible) return;
+  if (active.kind !== "markdown") {
+    outline.render([], "Outline is for markdown documents");
+    return;
+  }
+  outline.render(extractHeadings(view.state));
+  outline.setActive(view.state.selection.main.head, true);
+}
+
+function scheduleOutline() {
+  if (!outlineVisible) return;
+  clearTimeout(outlineTimer);
+  outlineTimer = setTimeout(refreshOutline, 250);
+}
+
+function setOutlineVisible(on, persist = true) {
+  outlineVisible = on;
+  document.body.classList.toggle("outline-hidden", !on);
+  $("toggle-outline").setAttribute("aria-pressed", String(on));
+  if (persist) {
+    try {
+      localStorage.setItem(OUTLINE_KEY, on ? "1" : "0");
+    } catch {
+      /* ignore */
+    }
+  }
+  if (on) refreshOutline();
+  // The panel animates its width; re-measure once it has settled.
+  setTimeout(() => {
+    view.requestMeasure();
+    sync.refresh();
+  }, 220);
+  if (appMenu) appMenu.setOutlineChecked(on).catch(() => {});
+}
 
 // ---------------------------------------------------------------------------
 // Rendering
@@ -320,6 +383,8 @@ function activate(doc) {
   editor.setTheme(currentTheme());
   editor.setFontSize(fontSize);
   editor.setWritingMode(writing, doc.kind);
+  outline.setCollapsedStore(doc.outlineCollapsed);
+  refreshOutline();
   renderNow().then(() => {
     previewPane.scrollTop = doc.previewScroll;
   });
@@ -545,6 +610,7 @@ const actions = {
   "reset-split": () => setSplit(50),
   "toggle-preview": () => setPreviewVisible(!previewVisible),
   "toggle-writing": () => setWritingMode(!writing),
+  "toggle-outline": () => setOutlineVisible(!outlineVisible),
   "font-increase": () => setFontSize(fontSize + 1),
   "font-decrease": () => setFontSize(fontSize - 1),
   "font-reset": () => setFontSize(FONT_DEFAULT),
@@ -584,6 +650,7 @@ const SHORTCUTS = {
   "ctrl+p": "export-pdf",
   "ctrl+shift+p": "toggle-preview",
   "ctrl+shift+w": "toggle-writing",
+  "ctrl+shift+o": "toggle-outline",
   "ctrl+shift+e": "edit-styles",
   "ctrl+w": "close-tab",
   "ctrl+tab": "next-tab",
@@ -614,6 +681,7 @@ window.addEventListener("keydown", (e) => {
 
 $("tab-new").addEventListener("click", () => runAction("new", "button"));
 $("toggle-preview").addEventListener("click", () => runAction("toggle-preview", "button"));
+$("toggle-outline").addEventListener("click", () => runAction("toggle-outline", "button"));
 
 // ---------------------------------------------------------------------------
 // Preview interactions: links and the context menu
@@ -711,6 +779,7 @@ if (isTauri) {
     appMenu = await menu.installAppMenu(runAction, themePreference());
     await refreshStyleList();
     await appMenu.setWritingChecked(writing);
+    await appMenu.setOutlineChecked(outlineVisible);
     contextMenu = await menu.createPreviewContextMenu(() => {
       if (jumpTarget !== null) sync.jumpTo(jumpTarget);
     });
@@ -739,6 +808,14 @@ try {
 } catch {
   /* ignore */
 }
+let outlineWanted = false;
+try {
+  outlineWanted = localStorage.getItem(OUTLINE_KEY) === "1";
+} catch {
+  /* ignore */
+}
+document.body.classList.toggle("outline-hidden", !outlineWanted);
+if (outlineWanted) setOutlineVisible(true, false);
 
 // Dev-only console hook for poking at the running app.
 if (import.meta.env.DEV) {

@@ -11,7 +11,7 @@
     background: #fff;
   }
 
-  #tabbar, #statusbar, #editor-pane, #resizer { display: none !important; }
+  #tabbar, #statusbar, #outline, #editor-pane, #resizer { display: none !important; }
 
   #app, #workspace { display: block; height: auto; }
 

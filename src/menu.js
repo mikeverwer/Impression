@@ -96,9 +96,18 @@ export async function installAppMenu(run, themePref) {
     action: () => run("toggle-writing", "menu"),
   });
 
+  const outlineItem = await CheckMenuItem.new({
+    id: "toggle-outline",
+    text: "&Outline",
+    accelerator: "CmdOrCtrl+Shift+O",
+    checked: false,
+    action: () => run("toggle-outline", "menu"),
+  });
+
   const view = await Submenu.new({
     text: "&View",
     items: [
+      outlineItem,
       writingItem,
       await item("toggle-preview", "Toggle &Preview", "CmdOrCtrl+Shift+P"),
       await item("reset-split", "&Reset Split"),
@@ -122,6 +131,10 @@ export async function installAppMenu(run, themePref) {
 
     async setWritingChecked(on) {
       await writingItem.setChecked(on);
+    },
+
+    async setOutlineChecked(on) {
+      await outlineItem.setChecked(on);
     },
 
     /** Replace the stylesheet radio items with `names`, checking `activeName`. */

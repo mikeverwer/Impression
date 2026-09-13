@@ -27,8 +27,9 @@ import { writingMode } from "./writing.js";
 // coloured independently of the other markdown punctuation.
 const listMark = Tag.define();
 const quoteMark = Tag.define();
+const codeText = Tag.define(); // plain text inside fenced code (default tag is shared with inline code)
 const markdownMarks = {
-  props: [styleTags({ ListMark: listMark, QuoteMark: quoteMark, TaskMarker: listMark })],
+  props: [styleTags({ ListMark: listMark, QuoteMark: quoteMark, TaskMarker: listMark, CodeText: codeText })],
 };
 
 // ---------------------------------------------------------------------------
@@ -109,7 +110,7 @@ const highlightStyle = HighlightStyle.define([
   { tag: t.strikethrough, textDecoration: "line-through" },
   { tag: t.link, color: "var(--cm-link)", textDecoration: "underline" },
   { tag: t.url, color: "var(--cm-url)" },
-  { tag: t.monospace, color: "var(--cm-code)" },
+  { tag: [t.monospace, codeText], color: "var(--cm-code)" },
   // Blockquote text keeps the normal colour, only italic; the > and list
   // bullets/numbers get the accent below.
   { tag: t.quote, fontStyle: "italic" },
@@ -147,6 +148,7 @@ const writingHighlightStyle = HighlightStyle.define([
   { tag: t.link, color: "var(--color-accent)", textDecoration: "underline" },
   { tag: t.url, color: "var(--color-accent)" },
   { tag: t.monospace, color: "var(--color-inline-code-text)", fontFamily: "var(--font-mono)" },
+  // codeText is deliberately unstyled here so fenced text takes the slab colour.
   { tag: t.quote, color: "var(--color-quote-text)", fontStyle: "italic" },
   { tag: t.processingInstruction, color: "var(--cm-marker)" },
   { tag: [listMark, quoteMark], color: "var(--cm-list-mark)", fontWeight: "bold" },
