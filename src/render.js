@@ -90,6 +90,26 @@ md.core.ruler.push("source_lines", (state) => {
   }
 });
 
+// GitHub-style task lists: "- [ ] todo" / "- [x] done" become list items with
+// a (disabled) checkbox. Runs after inline parsing so the marker is the first
+// text child of the item's paragraph.
+md.core.ruler.after("inline", "task_lists", (state) => {
+  const tokens = state.tokens;
+  for (let i = 2; i < tokens.length; i++) {
+    const inline = tokens[i];
+    if (inline.type !== "inline" || tokens[i - 1].type !== "paragraph_open" || tokens[i - 2].type !== "list_item_open") continue;
+    const first = inline.children && inline.children[0];
+    if (!first || first.type !== "text") continue;
+    const match = /^\[([ xX])\](?:\s+|$)/.exec(first.content);
+    if (!match) continue;
+    first.content = first.content.slice(match[0].length);
+    const box = new state.Token("html_inline", "", 0);
+    box.content = `<input class="task-list-item-checkbox" type="checkbox" disabled${match[1] === " " ? "" : " checked"}> `;
+    inline.children.unshift(box);
+    tokens[i - 2].attrJoin("class", "task-list-item");
+  }
+});
+
 // Heading ids so in-document links ([text](#section)) survive into the PDF.
 function slugify(text) {
   return text

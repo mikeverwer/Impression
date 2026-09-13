@@ -64,6 +64,10 @@ The preview (and the PDF) is styled by one stylesheet at a time. View > Preview 
 | Ctrl+P | Export to PDF (native print dialog) |
 | Ctrl+Shift+P | Show / hide the preview pane |
 | Ctrl+Shift+E | Edit preview styles |
+| Ctrl+Shift+. / Ctrl+Shift+, | Editor font size up / down (also Ctrl+wheel over the editor; reset via View menu) |
+| Ctrl+Shift+] / Ctrl+Shift+[ | Preview zoom in / out (also Ctrl+wheel over the preview; reset via View menu) |
+
+Ctrl with `=`, `-` or `0` can't be used for these: the webview reserves those combinations as browser zoom keys and never passes them to the app.
 | Ctrl+W | Close tab |
 | Ctrl+Tab, Ctrl+Shift+Tab | Next / previous tab |
 | Ctrl+B / Ctrl+I | Toggle bold / italic |

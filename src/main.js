@@ -40,6 +40,25 @@ const resizer = $("resizer");
 const statusPath = $("status-path");
 const statusCursor = $("status-cursor");
 const statusWords = $("status-words");
+const statusFont = $("status-font");
+const statusZoom = $("status-zoom");
+
+function readNumber(key) {
+  try {
+    const n = Number(localStorage.getItem(key));
+    return Number.isFinite(n) && n > 0 ? n : null;
+  } catch {
+    return null;
+  }
+}
+
+function storeNumber(key, value) {
+  try {
+    localStorage.setItem(key, String(value));
+  } catch {
+    /* ignore */
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Documents
@@ -161,6 +180,63 @@ try {
   /* ignore */
 }
 
+// ---- editor font size and preview zoom ------------------------------------
+
+const FONT_KEY = "editor-font-size";
+const FONT_DEFAULT = 14;
+const FONT_MIN = 9;
+const FONT_MAX = 32;
+let fontSize = FONT_DEFAULT;
+
+function setFontSize(px, persist = true) {
+  fontSize = Math.max(FONT_MIN, Math.min(FONT_MAX, Math.round(px)));
+  editor.setFontSize(fontSize);
+  statusFont.textContent = `${fontSize} px`;
+  if (persist) storeNumber(FONT_KEY, fontSize);
+  sync.refresh();
+}
+
+const ZOOM_KEY = "preview-zoom";
+const ZOOM_DEFAULT = 100;
+const ZOOM_MIN = 50;
+const ZOOM_MAX = 200;
+const ZOOM_STEP = 10;
+let zoom = ZOOM_DEFAULT;
+
+function setZoom(percent, persist = true) {
+  zoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, Math.round(percent / ZOOM_STEP) * ZOOM_STEP));
+  preview.style.zoom = `${zoom}%`;
+  statusZoom.textContent = `${zoom}%`;
+  if (persist) storeNumber(ZOOM_KEY, zoom);
+  sync.refresh();
+  if (sync.master === "editor") sync.editorToPreview();
+}
+
+setFontSize(readNumber(FONT_KEY) || FONT_DEFAULT, false);
+setZoom(readNumber(ZOOM_KEY) || ZOOM_DEFAULT, false);
+
+// Ctrl+wheel: font size over the editor, zoom over the preview. Both stop
+// the webview's own page zoom.
+editorPane.addEventListener(
+  "wheel",
+  (e) => {
+    if (!e.ctrlKey) return;
+    e.preventDefault();
+    setFontSize(fontSize + (e.deltaY < 0 ? 1 : -1));
+  },
+  { passive: false }
+);
+previewPane.addEventListener(
+  "wheel",
+  (e) => {
+    if (!e.ctrlKey) return;
+    e.preventDefault();
+    sync.master = "preview";
+    setZoom(zoom + (e.deltaY < 0 ? ZOOM_STEP : -ZOOM_STEP));
+  },
+  { passive: false }
+);
+
 /** Render into the preview. Resolves when Mermaid/KaTeX are done. */
 async function renderNow(theme = currentTheme()) {
   clearTimeout(renderTimer);
@@ -210,6 +286,7 @@ function activate(doc) {
   sync.enabled = doc.kind === "markdown";
   view.setState(doc.state);
   editor.setTheme(currentTheme());
+  editor.setFontSize(fontSize);
   renderNow().then(() => {
     previewPane.scrollTop = doc.previewScroll;
   });
@@ -434,6 +511,12 @@ const actions = {
   "theme-dark": () => applyThemePreference("dark"),
   "reset-split": () => setSplit(50),
   "toggle-preview": () => setPreviewVisible(!previewVisible),
+  "font-increase": () => setFontSize(fontSize + 1),
+  "font-decrease": () => setFontSize(fontSize - 1),
+  "font-reset": () => setFontSize(FONT_DEFAULT),
+  "zoom-in": () => setZoom(zoom + ZOOM_STEP),
+  "zoom-out": () => setZoom(zoom - ZOOM_STEP),
+  "zoom-reset": () => setZoom(ZOOM_DEFAULT),
   "edit-styles": () => editStyles(),
   "refresh-styles": () => refreshStyleList(),
   "open-styles-folder": () => openStylesFolder(),
@@ -474,10 +557,21 @@ const SHORTCUTS = {
   "ctrl+pageup": "prev-tab",
 };
 
+// Size keys are matched by physical key because Shift changes e.key
+// (. becomes >, [ becomes {). Ctrl with = - 0 cannot be used: the webview
+// consumes those as browser zoom keys before the page sees them.
+const SIZE_KEYS = {
+  Period: "font-increase",
+  Comma: "font-decrease",
+  BracketRight: "zoom-in",
+  BracketLeft: "zoom-out",
+};
+
 window.addEventListener("keydown", (e) => {
   if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
-  const combo = `ctrl+${e.shiftKey ? "shift+" : ""}${e.key.toLowerCase()}`;
-  const id = SHORTCUTS[combo];
+  let id = null;
+  if (e.shiftKey && SIZE_KEYS[e.code]) id = SIZE_KEYS[e.code];
+  else id = SHORTCUTS[`ctrl+${e.shiftKey ? "shift+" : ""}${e.key.toLowerCase()}`];
   if (!id) return;
   e.preventDefault();
   if (!e.repeat) runAction(id, "key");

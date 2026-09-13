@@ -20,7 +20,15 @@ import { searchKeymap, highlightSelectionMatches } from "@codemirror/search";
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
 import { css } from "@codemirror/lang-css";
 import { languages } from "@codemirror/language-data";
-import { tags as t } from "@lezer/highlight";
+import { tags as t, Tag, styleTags } from "@lezer/highlight";
+
+// Custom tags so list bullets, blockquote markers and task checkboxes can be
+// coloured independently of the other markdown punctuation.
+const listMark = Tag.define();
+const quoteMark = Tag.define();
+const markdownMarks = {
+  props: [styleTags({ ListMark: listMark, QuoteMark: quoteMark, TaskMarker: listMark })],
+};
 
 // ---------------------------------------------------------------------------
 // Theme: every colour comes from a CSS custom property, so the editor follows
@@ -73,6 +81,13 @@ function makeTheme(dark) {
 const themes = { light: makeTheme(false), dark: makeTheme(true) };
 const themeCompartment = new Compartment();
 
+// Font size lives in its own compartment so changing it goes through a
+// CodeMirror transaction, which re-measures line heights and keeps the
+// gutter aligned (an external CSS change would leave stale measurements).
+const fontCompartment = new Compartment();
+let currentFontSize = 14;
+const fontTheme = (px) => EditorView.theme({ "&": { fontSize: `${px}px` } });
+
 const highlightStyle = HighlightStyle.define([
   // Markdown structure
   { tag: t.heading1, color: "var(--cm-heading)", fontWeight: "bold", fontSize: "1.5em" },
@@ -86,10 +101,12 @@ const highlightStyle = HighlightStyle.define([
   { tag: t.link, color: "var(--cm-link)", textDecoration: "underline" },
   { tag: t.url, color: "var(--cm-url)" },
   { tag: t.monospace, color: "var(--cm-code)" },
-  { tag: t.quote, color: "var(--cm-quote)", fontStyle: "italic" },
+  // Blockquote text keeps the normal colour, only italic; the > and list
+  // bullets/numbers get the accent below.
+  { tag: t.quote, fontStyle: "italic" },
   { tag: t.processingInstruction, color: "var(--cm-marker)" },
+  { tag: [listMark, quoteMark], color: "var(--cm-list-mark)", fontWeight: "bold" },
   { tag: t.contentSeparator, color: "var(--cm-marker)", fontWeight: "bold" },
-  { tag: t.list, color: "var(--cm-marker)" },
   { tag: t.escape, color: "var(--cm-marker)" },
   { tag: t.labelName, color: "var(--cm-type)" },
   { tag: t.tagName, color: "var(--cm-keyword)" },
@@ -178,7 +195,7 @@ function languageFor(kind) {
     return [css(), EditorView.contentAttributes.of({ spellcheck: "false" })];
   }
   return [
-    markdown({ base: markdownLanguage, codeLanguages: languages, addKeymap: true }),
+    markdown({ base: markdownLanguage, codeLanguages: languages, addKeymap: true, extensions: [markdownMarks] }),
     // Native spellcheck: WebView2 is Chromium, so this uses the OS engine.
     EditorView.contentAttributes.of({ spellcheck: "true", autocorrect: "off", autocapitalize: "off" }),
   ];
@@ -193,6 +210,7 @@ function languageFor(kind) {
 export function createEditor({ parent, theme, keys = [], onUpdate }) {
   const extensionsFor = (kind) => [
     themeCompartment.of(themes[theme] || themes.light),
+    fontCompartment.of(fontTheme(currentFontSize)),
     languageCompartment.of(languageFor(kind)),
     lineNumbers(),
     highlightActiveLineGutter(),
@@ -222,5 +240,11 @@ export function createEditor({ parent, theme, keys = [], onUpdate }) {
     view.dispatch({ effects: themeCompartment.reconfigure(themes[name] || themes.light) });
   };
 
-  return { view, newState, setTheme };
+  const setFontSize = (px) => {
+    currentFontSize = px;
+    view.dispatch({ effects: fontCompartment.reconfigure(fontTheme(px)) });
+    requestAnimationFrame(() => view.requestMeasure());
+  };
+
+  return { view, newState, setTheme, setFontSize };
 }

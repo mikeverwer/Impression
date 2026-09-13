@@ -68,11 +68,34 @@ export async function installAppMenu(run, themePref) {
   });
   let styleItems = [];
 
+  const fontMenu = await Submenu.new({
+    text: "Editor &Font Size",
+    items: [
+      // Ctrl with = - 0 is swallowed by the webview (browser zoom keys), so
+      // these follow Word's Ctrl+Shift+> / Ctrl+Shift+< convention.
+      await item("font-increase", "&Increase", "CmdOrCtrl+Shift+."),
+      await item("font-decrease", "&Decrease", "CmdOrCtrl+Shift+,"),
+      await item("font-reset", "&Reset"),
+    ],
+  });
+
+  const zoomMenu = await Submenu.new({
+    text: "Preview &Zoom",
+    items: [
+      await item("zoom-in", "Zoom &In", "CmdOrCtrl+Shift+]"),
+      await item("zoom-out", "Zoom &Out", "CmdOrCtrl+Shift+["),
+      await item("zoom-reset", "&Reset"),
+    ],
+  });
+
   const view = await Submenu.new({
     text: "&View",
     items: [
       await item("toggle-preview", "Toggle &Preview", "CmdOrCtrl+Shift+P"),
       await item("reset-split", "&Reset Split"),
+      await separator(),
+      fontMenu,
+      zoomMenu,
       await separator(),
       styleMenu,
       await Submenu.new({ text: "&Theme", items: [themeItems.system, themeItems.light, themeItems.dark] }),

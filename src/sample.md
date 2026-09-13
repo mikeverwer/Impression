@@ -25,6 +25,10 @@ Plain paragraph with **bold**, *italic*, ***both***, `inline code`, ~~strike~~ (
   - Nested bullet
     - Deeper
 
+- [ ] An open task
+- [x] A completed task
+- [ ] Task with **bold** text
+
 Term one
 : Definition of term one.
 

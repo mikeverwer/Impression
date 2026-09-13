@@ -45,8 +45,8 @@
   --cm-link:          #0b5cad;
   --cm-url:           #5c7a99;
   --cm-code:          #195b8b;
-  --cm-quote:         #5d5d5d;
   --cm-marker:        #8a8a8a;
+  --cm-list-mark:     #c2542a;   /* list bullets/numbers, blockquote > and task boxes */
 
   /* Editor fenced-code tokens */
   --cm-keyword:       #8b2fb5;
@@ -92,8 +92,8 @@
   --cm-link:          #6db3ff;
   --cm-url:           #7f9bb8;
   --cm-code:          #8bb9e7;
-  --cm-quote:         #a3a3a3;
   --cm-marker:        #6e6e6e;
+  --cm-list-mark:     #e0845a;
 
   --cm-keyword:       #c792ea;
   --cm-string:        #c3e88d;

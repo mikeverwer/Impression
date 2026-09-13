@@ -97,6 +97,15 @@
   ul ul ol, ul ol ol, ol ul ol, ol ol ol { list-style-type: lower-alpha; }
   li > p { margin-top: 16px; }
 
+  /* Task lists: "- [ ] item" / "- [x] item" */
+  .task-list-item { list-style-type: none; }
+  .task-list-item + .task-list-item { margin-top: 3px; }
+  .task-list-item-checkbox {
+    margin: 0 0.4em 0.2em -1.5em;
+    vertical-align: middle;
+    accent-color: var(--color-accent);
+  }
+
   dl { padding: 0; }
   dl dt {
     padding: 0;
