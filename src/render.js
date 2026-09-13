@@ -10,6 +10,9 @@
 // auto-render and Mermaid. Both libraries are imported lazily the first time
 // a document needs them, so a plain document never pays for them at startup.
 
+// applyCached() is the synchronous per-keystroke pass; enhance() finishes
+// whatever it could not do (lazy imports, uncached diagrams).
+
 import MarkdownIt from "markdown-it";
 import footnote from "markdown-it-footnote";
 import deflist from "markdown-it-deflist";
@@ -197,16 +200,45 @@ const KATEX_OPTIONS = {
  * `isStale()` lets the caller abort when a newer render has replaced the DOM
  * while a lazy import or diagram layout was in flight.
  */
+function hasMath(container) {
+  const text = container.textContent;
+  return text.includes("$") || text.includes("\\(") || text.includes("\\[");
+}
+
+/**
+ * Synchronous fast path run on every keystroke: KaTeX (once its module is
+ * loaded) and any Mermaid diagram whose SVG is already cached. Returns true
+ * when something still needs the async pass (a library not yet loaded, or an
+ * uncached diagram).
+ */
+export function applyCached(container, theme) {
+  let pending = false;
+  if (hasMath(container)) {
+    if (renderMath) renderMath(container, KATEX_OPTIONS);
+    else pending = true;
+  }
+  for (const node of container.querySelectorAll(".mermaid:not([data-rendered])")) {
+    const svg = mermaid && mermaidTheme === theme ? mermaidCache.get(`${theme}\n${node.textContent}`) : null;
+    if (svg) {
+      node.innerHTML = svg;
+      node.dataset.rendered = "1";
+    } else pending = true;
+  }
+  return pending;
+}
+
 export async function enhance(container, theme, isStale = () => false) {
-  if (container.textContent.includes("$") || container.textContent.includes("\\(") || container.textContent.includes("\\[")) {
+  if (hasMath(container)) {
     if (!renderMath) {
       renderMath = (await import("katex/contrib/auto-render")).default;
       if (isStale()) return;
+      renderMath(container, KATEX_OPTIONS);
+    } else if (!container.querySelector(".katex")) {
+      renderMath(container, KATEX_OPTIONS);
     }
-    renderMath(container, KATEX_OPTIONS);
   }
 
-  const nodes = Array.from(container.querySelectorAll(".mermaid"));
+  const nodes = Array.from(container.querySelectorAll(".mermaid:not([data-rendered])"));
   if (!nodes.length) return;
 
   if (!mermaid) {
@@ -240,5 +272,6 @@ export async function enhance(container, theme, isStale = () => false) {
       mermaidCache.set(key, svg);
     }
     node.innerHTML = svg;
+    node.dataset.rendered = "1";
   }
 }

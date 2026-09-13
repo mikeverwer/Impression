@@ -7,7 +7,7 @@ import "./styles/print.css";
 import "katex/dist/katex.min.css";
 
 import { initTheme, currentTheme, themePreference, setThemePreference, onThemeChange } from "./theme.js";
-import { renderMarkdown, enhance } from "./render.js";
+import { renderMarkdown, applyCached, enhance } from "./render.js";
 import { createEditor, toggleBold, toggleItalic } from "./editor.js";
 import { ScrollSync } from "./sync.js";
 import { TabBar } from "./tabs.js";
@@ -240,12 +240,20 @@ function setOutlineVisible(on, persist = true) {
 // Rendering
 
 let renderTimer = null;
+let enhanceTimer = null;
 let renderGeneration = 0;
-const RENDER_DELAY = 200;
+// While typing, the markdown pass runs at most every RENDER_THROTTLE ms (it
+// costs a few ms, so the preview effectively follows every keystroke). Only
+// the expensive part, uncached Mermaid diagrams, waits for a typing pause.
+const RENDER_THROTTLE = 40;
+const ENHANCE_DELAY = 200;
 
 function scheduleRender() {
-  clearTimeout(renderTimer);
-  renderTimer = setTimeout(() => renderNow(), RENDER_DELAY);
+  if (renderTimer) return;
+  renderTimer = setTimeout(() => {
+    renderTimer = null;
+    renderNow(currentTheme(), { complete: false });
+  }, RENDER_THROTTLE);
 }
 
 /** The document the preview should show. */
@@ -396,11 +404,15 @@ previewPane.addEventListener(
 );
 
 /**
- * Render into the preview. Resolves when Mermaid/KaTeX are done.
+ * Render into the preview.
  * `force` renders even while the pane is hidden (needed for printing).
+ * `complete` (default) awaits the Mermaid/KaTeX pass; the typing path passes
+ * false so that pass is deferred until typing pauses.
  */
-async function renderNow(theme = currentTheme(), force = false) {
+async function renderNow(theme = currentTheme(), { force = false, complete = true } = {}) {
   clearTimeout(renderTimer);
+  renderTimer = null;
+  clearTimeout(enhanceTimer);
   if (!active) return;
   if (!previewVisible && !force) {
     // Skip the work while hidden; catch up when the pane is shown again.
@@ -415,17 +427,24 @@ async function renderNow(theme = currentTheme(), force = false) {
   const source = previewDoc();
   preview.innerHTML = renderMarkdown(source ? source.text() : sampleText);
   updateWordCount();
+  const pending = applyCached(preview, theme);
   sync.refresh();
   if (sync.master === "editor") sync.editorToPreview();
+  if (!pending) return;
 
-  try {
-    await enhance(preview, theme, isStale);
-  } catch (err) {
-    console.error("enhance failed", err);
-  }
-  if (isStale()) return;
-  sync.refresh();
-  if (sync.master === "editor") sync.editorToPreview();
+  const finish = async () => {
+    if (isStale()) return;
+    try {
+      await enhance(preview, theme, isStale);
+    } catch (err) {
+      console.error("enhance failed", err);
+    }
+    if (isStale()) return;
+    sync.refresh();
+    if (sync.master === "editor") sync.editorToPreview();
+  };
+  if (complete) await finish();
+  else enhanceTimer = setTimeout(finish, ENHANCE_DELAY);
 }
 
 onThemeChange((theme) => {
@@ -688,7 +707,7 @@ const actions = {
   open: () => openFiles(),
   save: () => active && saveDoc(active),
   "save-as": () => active && saveDoc(active, true),
-  "export-pdf": () => exportPdf({ preview, rerender: (theme) => renderNow(theme, true), currentTheme }),
+  "export-pdf": () => exportPdf({ preview, rerender: (theme) => renderNow(theme, { force: true }), currentTheme }),
   "close-tab": () => active && closeDoc(active),
   quit: () => (tauriWindow ? tauriWindow.close() : window.close()),
   bold: () => toggleBold(view),
