@@ -46,7 +46,6 @@ Output lands in `src-tauri/target/release/bundle/`.
 | `src/styles/preview.css` | Built-in preview stylesheet: document styles, `--hl-*` token colours, page setup (user-editable copy) |
 | `src/styles/print.css` | `@media print` rules that hide the app chrome |
 | `src-tauri/` | Rust side: plugin registration only |
-| `styles/markdown-styles.css` | Original reference stylesheet from the site (not loaded by the app) |
 
 ## Preview stylesheets
 
