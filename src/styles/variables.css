@@ -47,6 +47,7 @@
   --cm-code:          #195b8b;
   --cm-marker:        #8a8a8a;
   --cm-list-mark:     #c2542a;   /* list bullets/numbers, blockquote > and task boxes */
+  --cm-codeblock-bg:  #00000009; /* writing mode: code block and inline code tint */
 
   /* Editor fenced-code tokens */
   --cm-keyword:       #8b2fb5;
@@ -94,6 +95,7 @@
   --cm-code:          #8bb9e7;
   --cm-marker:        #6e6e6e;
   --cm-list-mark:     #e0845a;
+  --cm-codeblock-bg:  #ffffff0a;
 
   --cm-keyword:       #c792ea;
   --cm-string:        #c3e88d;

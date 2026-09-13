@@ -88,9 +88,18 @@ export async function installAppMenu(run, themePref) {
     ],
   });
 
+  const writingItem = await CheckMenuItem.new({
+    id: "toggle-writing",
+    text: "&Writing Mode",
+    accelerator: "CmdOrCtrl+Shift+W",
+    checked: false,
+    action: () => run("toggle-writing", "menu"),
+  });
+
   const view = await Submenu.new({
     text: "&View",
     items: [
+      writingItem,
       await item("toggle-preview", "Toggle &Preview", "CmdOrCtrl+Shift+P"),
       await item("reset-split", "&Reset Split"),
       await separator(),
@@ -109,6 +118,10 @@ export async function installAppMenu(run, themePref) {
   return {
     async setThemeChecked(pref) {
       for (const [id, it] of Object.entries(themeItems)) await it.setChecked(id === pref);
+    },
+
+    async setWritingChecked(on) {
+      await writingItem.setChecked(on);
     },
 
     /** Replace the stylesheet radio items with `names`, checking `activeName`. */

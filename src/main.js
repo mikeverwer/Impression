@@ -215,6 +215,35 @@ function setZoom(percent, persist = true) {
 setFontSize(readNumber(FONT_KEY) || FONT_DEFAULT, false);
 setZoom(readNumber(ZOOM_KEY) || ZOOM_DEFAULT, false);
 
+// ---- writing mode -----------------------------------------------------------
+// Inline rendering in the editor; turning it on collapses the preview and
+// turning it off brings the preview back to how it was.
+
+const WRITING_KEY = "writing-mode";
+let writing = false;
+let previewBeforeWriting = true;
+
+function setWritingMode(on, persist = true) {
+  if (on === writing) return;
+  writing = on;
+  document.body.classList.toggle("writing-mode", on);
+  editor.setWritingMode(on, active ? active.kind : "markdown");
+  if (on) {
+    previewBeforeWriting = previewVisible;
+    if (previewVisible) setPreviewVisible(false, false);
+  } else if (previewBeforeWriting && !previewVisible) {
+    setPreviewVisible(true, false);
+  }
+  if (persist) {
+    try {
+      localStorage.setItem(WRITING_KEY, on ? "1" : "0");
+    } catch {
+      /* ignore */
+    }
+  }
+  if (appMenu) appMenu.setWritingChecked(on).catch(() => {});
+}
+
 // Ctrl+wheel: font size over the editor, zoom over the preview. Both stop
 // the webview's own page zoom.
 editorPane.addEventListener(
@@ -287,6 +316,7 @@ function activate(doc) {
   view.setState(doc.state);
   editor.setTheme(currentTheme());
   editor.setFontSize(fontSize);
+  editor.setWritingMode(writing, doc.kind);
   renderNow().then(() => {
     previewPane.scrollTop = doc.previewScroll;
   });
@@ -511,6 +541,7 @@ const actions = {
   "theme-dark": () => applyThemePreference("dark"),
   "reset-split": () => setSplit(50),
   "toggle-preview": () => setPreviewVisible(!previewVisible),
+  "toggle-writing": () => setWritingMode(!writing),
   "font-increase": () => setFontSize(fontSize + 1),
   "font-decrease": () => setFontSize(fontSize - 1),
   "font-reset": () => setFontSize(FONT_DEFAULT),
@@ -549,6 +580,7 @@ const SHORTCUTS = {
   "ctrl+shift+s": "save-as",
   "ctrl+p": "export-pdf",
   "ctrl+shift+p": "toggle-preview",
+  "ctrl+shift+w": "toggle-writing",
   "ctrl+shift+e": "edit-styles",
   "ctrl+w": "close-tab",
   "ctrl+tab": "next-tab",
@@ -675,6 +707,7 @@ if (isTauri) {
     const menu = await import("./menu.js");
     appMenu = await menu.installAppMenu(runAction, themePreference());
     await refreshStyleList();
+    await appMenu.setWritingChecked(writing);
     contextMenu = await menu.createPreviewContextMenu(() => {
       if (jumpTarget !== null) sync.jumpTo(jumpTarget);
     });
@@ -697,6 +730,12 @@ if (isTauri) {
 
 if (new URLSearchParams(location.search).has("sample")) addDoc({ text: sampleText });
 else newDoc();
+
+try {
+  if (localStorage.getItem(WRITING_KEY) === "1") setWritingMode(true, false);
+} catch {
+  /* ignore */
+}
 
 // Dev-only console hook for poking at the running app.
 if (import.meta.env.DEV) {

@@ -21,6 +21,7 @@ import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
 import { css } from "@codemirror/lang-css";
 import { languages } from "@codemirror/language-data";
 import { tags as t, Tag, styleTags } from "@lezer/highlight";
+import { writingMode } from "./writing.js";
 
 // Custom tags so list bullets, blockquote markers and task checkboxes can be
 // coloured independently of the other markdown punctuation.
@@ -87,6 +88,11 @@ const themeCompartment = new Compartment();
 const fontCompartment = new Compartment();
 let currentFontSize = 14;
 const fontTheme = (px) => EditorView.theme({ "&": { fontSize: `${px}px` } });
+
+// Writing mode (inline rendering) is only meaningful for markdown documents.
+const writingCompartment = new Compartment();
+let writingEnabled = false;
+const writingFor = (kind) => (writingEnabled && kind === "markdown" ? writingMode() : []);
 
 const highlightStyle = HighlightStyle.define([
   // Markdown structure
@@ -212,6 +218,7 @@ export function createEditor({ parent, theme, keys = [], onUpdate }) {
     themeCompartment.of(themes[theme] || themes.light),
     fontCompartment.of(fontTheme(currentFontSize)),
     languageCompartment.of(languageFor(kind)),
+    writingCompartment.of(writingFor(kind)),
     lineNumbers(),
     highlightActiveLineGutter(),
     highlightSpecialChars(),
@@ -246,5 +253,11 @@ export function createEditor({ parent, theme, keys = [], onUpdate }) {
     requestAnimationFrame(() => view.requestMeasure());
   };
 
-  return { view, newState, setTheme, setFontSize };
+  /** Turn writing mode on/off for the current state (`kind` of the active document). */
+  const setWritingMode = (on, kind = "markdown") => {
+    writingEnabled = on;
+    view.dispatch({ effects: writingCompartment.reconfigure(writingFor(kind)) });
+  };
+
+  return { view, newState, setTheme, setFontSize, setWritingMode };
 }

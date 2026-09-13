@@ -56,6 +56,10 @@ The preview (and the PDF) is styled by one stylesheet at a time. View > Preview 
 - Any `.css` file you drop into the styles folder appears in the list after Refresh List (or the next time the window gets focus).
 - Edits to the active stylesheet apply to the preview live; Ctrl+S saves them. While a stylesheet tab is active the preview keeps showing your most recent markdown document.
 
+## Writing mode
+
+View > Writing Mode (Ctrl+Shift+W) collapses the preview and renders markdown inline in the editor, Obsidian-style: heading, emphasis, code, link and strikethrough markers are hidden, `>` becomes a quote bar, bullets become •, task markers become clickable checkboxes and `---` becomes a rule. The line under the cursor always shows its raw source. Fenced code, tables, math, images, footnotes and definition lists stay as source (the preview and PDF still render them). Turning the mode off restores the preview.
+
 ## Shortcuts
 
 | Keys | Action |
@@ -63,6 +67,7 @@ The preview (and the PDF) is styled by one stylesheet at a time. View > Preview 
 | Ctrl+N / Ctrl+O / Ctrl+S / Ctrl+Shift+S | New / Open / Save / Save As |
 | Ctrl+P | Export to PDF (native print dialog) |
 | Ctrl+Shift+P | Show / hide the preview pane |
+| Ctrl+Shift+W | Writing mode (inline rendering, preview collapsed) |
 | Ctrl+Shift+E | Edit preview styles |
 | Ctrl+Shift+. / Ctrl+Shift+, | Editor font size up / down (also Ctrl+wheel over the editor; reset via View menu) |
 | Ctrl+Shift+] / Ctrl+Shift+[ | Preview zoom in / out (also Ctrl+wheel over the preview; reset via View menu) |
