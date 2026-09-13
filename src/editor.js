@@ -22,7 +22,7 @@ import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
 import { css } from "@codemirror/lang-css";
 import { languages } from "@codemirror/language-data";
 import { tags as t, Tag, styleTags } from "@lezer/highlight";
-import { writingMode } from "./writing.js";
+import { writingMode, typewriterScrolling } from "./writing.js";
 
 // Custom tags so list bullets, blockquote markers and task checkboxes can be
 // coloured independently of the other markdown punctuation.
@@ -98,11 +98,14 @@ function fontTheme(px) {
 }
 
 // Writing mode (inline rendering) is only meaningful for markdown documents.
+// Typewriter scrolling rides along with it: in the split view the preview
+// follows the editor, so recentring on every keystroke would drag both panes.
 const writingCompartment = new Compartment();
 let writingEnabled = false;
+let typewriterEnabled = true;
 const writingFor = (kind) =>
   writingEnabled && kind === "markdown"
-    ? [syntaxHighlighting(writingHighlightStyle), writingMode()]
+    ? [syntaxHighlighting(writingHighlightStyle), writingMode(), typewriterEnabled ? typewriterScrolling() : []]
     : [syntaxHighlighting(highlightStyle)];
 
 const highlightStyle = HighlightStyle.define([
@@ -323,5 +326,11 @@ export function createEditor({ parent, theme, keys = [], onUpdate, emptyHint = "
     view.dispatch({ effects: writingCompartment.reconfigure(writingFor(kind)) });
   };
 
-  return { view, newState, setTheme, setFontSize, setWritingMode };
+  /** Turn typewriter scrolling on/off (it applies while writing mode is on). */
+  const setTypewriter = (on, kind = "markdown") => {
+    typewriterEnabled = on;
+    view.dispatch({ effects: writingCompartment.reconfigure(writingFor(kind)) });
+  };
+
+  return { view, newState, setTheme, setFontSize, setWritingMode, setTypewriter };
 }

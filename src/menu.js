@@ -124,6 +124,13 @@ export async function installAppMenu(run, themePref) {
     action: () => run("toggle-outline", "menu"),
   });
 
+  const typewriterItem = await CheckMenuItem.new({
+    id: "toggle-typewriter",
+    text: "&Typewriter Scrolling",
+    checked: true,
+    action: () => run("toggle-typewriter", "menu"),
+  });
+
   const cleanItem = await CheckMenuItem.new({
     id: "toggle-clean",
     text: "&Clean View",
@@ -137,6 +144,7 @@ export async function installAppMenu(run, themePref) {
     items: [
       outlineItem,
       writingItem,
+      typewriterItem,
       cleanItem,
       await item("toggle-preview", "Toggle &Preview", "CmdOrCtrl+Shift+P"),
       await item("reset-split", "&Reset Split"),
@@ -176,6 +184,10 @@ export async function installAppMenu(run, themePref) {
 
     async setCleanChecked(on) {
       await cleanItem.setChecked(on);
+    },
+
+    async setTypewriterChecked(on) {
+      await typewriterItem.setChecked(on);
     },
 
     async setRestoreSessionChecked(on) {

@@ -326,5 +326,10 @@ const typewriter = EditorView.updateListener.of((update) => {
 
 /** The writing-mode extension bundle. */
 export function writingMode() {
-  return [plugin, theme, typewriter];
+  return [plugin, theme];
+}
+
+/** Typewriter scrolling on its own, so it can be toggled independently. */
+export function typewriterScrolling() {
+  return [typewriter];
 }

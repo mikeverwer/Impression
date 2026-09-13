@@ -472,6 +472,30 @@ function setWritingMode(on, persist = true) {
   if (appMenu) appMenu.setWritingChecked(on).catch(() => {});
 }
 
+// ---- typewriter scrolling ---------------------------------------------------
+// Applies while writing mode is on; on by default.
+
+const TYPEWRITER_KEY = "typewriter";
+let typewriter = true;
+try {
+  typewriter = localStorage.getItem(TYPEWRITER_KEY) !== "0";
+} catch {
+  /* ignore */
+}
+
+function setTypewriter(on, persist = true) {
+  typewriter = on;
+  editor.setTypewriter(on, active ? active.kind : "markdown");
+  if (persist) {
+    try {
+      localStorage.setItem(TYPEWRITER_KEY, on ? "1" : "0");
+    } catch {
+      /* ignore */
+    }
+  }
+  if (appMenu) appMenu.setTypewriterChecked(on).catch(() => {});
+}
+
 // ---- clean view -------------------------------------------------------------
 // Hides the line-number gutter and the status bar. Entering it also switches
 // to writing mode and hides the outline; leaving it only restores the gutter
@@ -588,6 +612,7 @@ function activate(doc) {
   editor.setTheme(currentTheme());
   editor.setFontSize(fontSize);
   editor.setWritingMode(writing, doc.kind);
+  editor.setTypewriter(typewriter, doc.kind);
   outline.setCollapsedStore(doc.outlineCollapsed);
   refreshOutline();
   renderNow().then(() => {
@@ -1016,6 +1041,7 @@ const actions = {
   "toggle-writing": () => setWritingMode(!writing),
   "toggle-outline": () => setOutlineVisible(!outlineVisible),
   "toggle-clean": () => setCleanMode(!clean),
+  "toggle-typewriter": () => setTypewriter(!typewriter),
   "toggle-restore-session": () => setRestoreSession(!restoreSession),
   "font-increase": () => setFontSize(fontSize + 1),
   "font-decrease": () => setFontSize(fontSize - 1),
@@ -1262,6 +1288,7 @@ if (isTauri) {
     await appMenu.setWritingChecked(writing);
     await appMenu.setOutlineChecked(outlineVisible);
     await appMenu.setCleanChecked(clean);
+    await appMenu.setTypewriterChecked(typewriter);
     await appMenu.setRestoreSessionChecked(restoreSession);
     refreshRecentMenu();
     contextMenu = await menu.createPreviewContextMenu(() => {
@@ -1308,6 +1335,7 @@ async function launchFiles() {
 // Start
 
 // Restore the saved layout first, so a document opened below can override it.
+setTypewriter(typewriter, false);
 try {
   if (localStorage.getItem(WRITING_KEY) === "1") setWritingMode(true, false);
 } catch {

@@ -97,7 +97,7 @@ View > Clean View (Ctrl+Shift+C) hides the line-number gutter and the status bar
 
 View > Writing Mode (Ctrl+Shift+W) collapses the preview and renders markdown inline in the editor, Obsidian-style: heading, emphasis, code, link and strikethrough markers are hidden, `>` becomes a quote bar, bullets become •, task markers become clickable checkboxes and `---` becomes a rule. The line under the cursor always shows its raw source. Fenced code, tables, math, images, footnotes and definition lists stay as source (the preview and PDF still render them). Turning the mode off restores the preview.
 
-Writing mode also scrolls like a typewriter: the caret line stays vertically centred as you type or move by keyboard. Clicking somewhere leaves the view where it is.
+Writing mode also scrolls like a typewriter: the caret line stays vertically centred as you type or move by keyboard. Clicking somewhere leaves the view where it is. View > Typewriter Scrolling turns it off (it is on by default, and the choice is remembered). It applies only in writing mode, because in the split view the preview follows the editor and recentring would drag both panes on every keystroke.
 
 Writing mode is drawn by the editor, not by the preview stylesheet, so it can't pick up arbitrary rules from `user_styles.css`. It does use the same design tokens (`--font-markdown`, `--color-accent`, `--color-body-text`, `--color-inline-code-text`), so overriding those in a user stylesheet changes both. Export to PDF works from writing mode; it renders the hidden preview for the print.
 
