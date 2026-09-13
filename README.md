@@ -55,6 +55,15 @@ The preview (and the PDF) is styled by one stylesheet at a time. View > Preview 
 - Any `.css` file you drop into the styles folder appears in the list after Refresh List (or the next time the window gets focus).
 - Edits to the active stylesheet apply to the preview live; Ctrl+S saves them. While a stylesheet tab is active the preview keeps showing your most recent markdown document.
 
+## Files and sessions
+
+- `.md` and `.markdown` files are associated with the app by the installers, so double-clicking one in Explorer opens it; so does `impression.exe file.md` from a terminal. A second launch hands its files to the running window instead of opening another.
+- Drop `.md`, `.txt` or `.css` files onto the window to open them.
+- File > Open Recent lists the last ten files opened or saved.
+- File > Restore Session on Startup (off by default) reopens the files that were open when the app was last closed. Files given on the command line take precedence.
+- Window size and position are remembered.
+- When the window regains focus, open files are checked against the disk: a file changed elsewhere reloads silently if the tab has no unsaved edits, otherwise you are asked whether to reload.
+
 ## Images
 
 Relative image paths (`![](pics/logo.png)`) resolve against the document's folder, in the preview and in the PDF; absolute paths, `file://` URLs and `<img>` tags in raw HTML work too. Unsaved documents have no folder, so relative images only show once the file is saved.

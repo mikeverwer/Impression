@@ -1,7 +1,7 @@
 // File dialogs and disk I/O through the Tauri dialog and fs plugins.
 
-import { open, save, message } from "@tauri-apps/plugin-dialog";
-import { readTextFile, writeTextFile, writeFile as writeBytes, mkdir, exists } from "@tauri-apps/plugin-fs";
+import { open, save, message, ask } from "@tauri-apps/plugin-dialog";
+import { readTextFile, writeTextFile, writeFile as writeBytes, mkdir, exists, stat } from "@tauri-apps/plugin-fs";
 
 const MARKDOWN_FILTERS = [
   { name: "Markdown", extensions: ["md", "markdown", "mdown", "mkd", "txt"] },
@@ -66,6 +66,21 @@ export async function writeBinaryFile(path, bytes) {
 
 export async function fileExists(path) {
   return exists(path);
+}
+
+/** Last-modified time in ms, or null if the file can't be read. */
+export async function modifiedTime(path) {
+  try {
+    const info = await stat(path);
+    return info.mtime ? new Date(info.mtime).getTime() : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Yes/No question; resolves to true for Yes. */
+export async function confirm(text, { title = "Impression", kind = "warning" } = {}) {
+  return ask(text, { title, kind });
 }
 
 /** Folder part of a path (no trailing separator), or "" if none. */

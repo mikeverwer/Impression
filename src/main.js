@@ -35,6 +35,100 @@ if (isTauri) {
   setAssetResolver((await import("@tauri-apps/api/core")).convertFileSrc);
 }
 
+// ---------------------------------------------------------------------------
+// Window geometry
+//
+// The window starts hidden (tauri.conf.json) so its saved size and position
+// can be applied before it appears.
+//
+// Size is stored as the OUTER size in logical units. setSize() sets the inner
+// size and innerSize() excludes the native menu bar, so the two are not
+// symmetric: saving what we measure and restoring it directly would shrink the
+// window by the menu-bar height on every launch. Instead the restore sets a
+// size, measures the resulting outer size, and corrects once by the error,
+// which converges whatever the decorations happen to be.
+
+const WINDOW_KEY = "window-state";
+let windowSaveTimer = null;
+
+async function showWindow() {
+  if (!tauriWindow) return;
+  try {
+    await tauriWindow.show();
+  } catch {
+    /* ignore */
+  }
+}
+
+async function restoreWindowState() {
+  if (!tauriWindow) return;
+  try {
+    const saved = JSON.parse(localStorage.getItem(WINDOW_KEY) || "null");
+    if (saved && saved.w > 300 && saved.h > 200) {
+      const { LogicalSize, LogicalPosition } = await import("@tauri-apps/api/dpi");
+      const factor = await tauriWindow.scaleFactor();
+      await tauriWindow.setSize(new LogicalSize(saved.w, saved.h));
+      // Correct for the decoration/menu difference between what we set and
+      // what the window actually became.
+      const outer = (await tauriWindow.outerSize()).toLogical(factor);
+      const dw = saved.w - outer.width;
+      const dh = saved.h - outer.height;
+      if (Math.abs(dw) >= 1 || Math.abs(dh) >= 1) {
+        await tauriWindow.setSize(new LogicalSize(saved.w + dw, saved.h + dh));
+      }
+      if (Number.isFinite(saved.x) && Number.isFinite(saved.y)) {
+        await tauriWindow.setPosition(new LogicalPosition(saved.x, saved.y));
+      }
+      if (saved.maximized) await tauriWindow.maximize();
+    }
+  } catch (err) {
+    console.warn("window state restore failed", err);
+  } finally {
+    await showWindow();
+  }
+}
+
+async function saveWindowState() {
+  if (!tauriWindow) return;
+  try {
+    const maximized = await tauriWindow.isMaximized();
+    const previous = JSON.parse(localStorage.getItem(WINDOW_KEY) || "null") || {};
+    if (maximized) {
+      // Keep the restored-down geometry; only note that it was maximized.
+      localStorage.setItem(WINDOW_KEY, JSON.stringify({ ...previous, maximized: true }));
+      return;
+    }
+    const factor = await tauriWindow.scaleFactor();
+    const size = (await tauriWindow.outerSize()).toLogical(factor);
+    const pos = (await tauriWindow.outerPosition()).toLogical(factor);
+    localStorage.setItem(
+      WINDOW_KEY,
+      JSON.stringify({
+        w: Math.round(size.width),
+        h: Math.round(size.height),
+        x: Math.round(pos.x),
+        y: Math.round(pos.y),
+        maximized: false,
+      })
+    );
+  } catch {
+    /* ignore */
+  }
+}
+
+function scheduleWindowSave() {
+  clearTimeout(windowSaveTimer);
+  windowSaveTimer = setTimeout(saveWindowState, 400);
+}
+
+if (tauriWindow) {
+  // Safety net: show the window even if restoring geometry never completes.
+  setTimeout(showWindow, 2000);
+  await restoreWindowState();
+  tauriWindow.onResized(scheduleWindowSave).catch(() => {});
+  tauriWindow.onMoved(scheduleWindowSave).catch(() => {});
+}
+
 /** Folder containing a document, or null for unsaved ones. */
 function docDir(doc) {
   if (!doc || !doc.path) return null;
@@ -99,6 +193,7 @@ class Doc {
     this.editorScroll = 0;
     this.previewScroll = 0;
     this.outlineCollapsed = new Set();
+    this.mtime = null; // on-disk modification time when last read or written
   }
 
   get name() {
@@ -595,11 +690,153 @@ async function openPath(path) {
   if (existing) return activate(existing);
   try {
     const raw = await files.readFile(path);
-    return addDoc({ path, text: raw, eol: raw.includes("\r\n") ? "\r\n" : "\n" });
+    const doc = addDoc({ path, text: raw, eol: raw.includes("\r\n") ? "\r\n" : "\n" });
+    doc.mtime = await files.modifiedTime(path);
+    addRecent(path);
+    saveSession();
+    return doc;
   } catch (err) {
     console.error(err);
     await files.showError(`Could not open ${path}\n\n${err}`);
+    removeRecent(path);
     return null;
+  }
+}
+
+// ---- recent files -----------------------------------------------------------
+
+const RECENT_KEY = "recent-files";
+const RECENT_MAX = 10;
+
+function recentFiles() {
+  try {
+    const list = JSON.parse(localStorage.getItem(RECENT_KEY) || "[]");
+    return Array.isArray(list) ? list.filter((p) => typeof p === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+function storeRecent(list) {
+  try {
+    localStorage.setItem(RECENT_KEY, JSON.stringify(list.slice(0, RECENT_MAX)));
+  } catch {
+    /* ignore */
+  }
+  refreshRecentMenu();
+}
+
+function addRecent(path) {
+  storeRecent([path, ...recentFiles().filter((p) => p.toLowerCase() !== path.toLowerCase())]);
+}
+
+function removeRecent(path) {
+  storeRecent(recentFiles().filter((p) => p.toLowerCase() !== path.toLowerCase()));
+}
+
+function refreshRecentMenu() {
+  if (!appMenu) return;
+  appMenu.setRecentFiles(recentFiles(), (path) => openPath(path), () => storeRecent([])).catch((err) => console.warn(err));
+}
+
+// ---- session (opt-in) -------------------------------------------------------
+// When enabled, the open files are reopened on the next launch. Saved on every
+// tab change so a crash loses nothing.
+
+const RESTORE_KEY = "restore-session";
+const SESSION_KEY = "session";
+let restoreSession = false;
+try {
+  restoreSession = localStorage.getItem(RESTORE_KEY) === "1";
+} catch {
+  /* ignore */
+}
+
+function saveSession() {
+  try {
+    const paths = docs.filter((d) => d.path).map((d) => d.path);
+    localStorage.setItem(SESSION_KEY, JSON.stringify({ paths, active: active && active.path ? active.path : null }));
+  } catch {
+    /* ignore */
+  }
+}
+
+function setRestoreSession(on) {
+  restoreSession = on;
+  try {
+    localStorage.setItem(RESTORE_KEY, on ? "1" : "0");
+  } catch {
+    /* ignore */
+  }
+  if (appMenu) appMenu.setRestoreSessionChecked(on).catch(() => {});
+}
+
+/** Reopen last session's files; resolves to how many opened. */
+async function restoreLastSession() {
+  let session = null;
+  try {
+    session = JSON.parse(localStorage.getItem(SESSION_KEY) || "null");
+  } catch {
+    /* ignore */
+  }
+  if (!session || !Array.isArray(session.paths)) return 0;
+  let opened = 0;
+  for (const path of session.paths) {
+    if (await files.fileExists(path)) {
+      if (await openPath(path)) opened++;
+    }
+  }
+  if (session.active) {
+    const doc = docs.find((d) => d.path === session.active);
+    if (doc) activate(doc);
+  }
+  return opened;
+}
+
+// ---- files changed outside the app -----------------------------------------
+
+async function reloadFromDisk(doc) {
+  const raw = await files.readFile(doc.path);
+  doc.eol = raw.includes("\r\n") ? "\r\n" : "\n";
+  if (doc === active) {
+    // Replace the text in place: cursor, scroll and undo history survive.
+    view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: raw } });
+    doc.state = view.state;
+  } else {
+    doc.state = editor.newState(raw, doc.kind);
+  }
+  doc.savedDoc = doc.state.doc;
+  doc.mtime = await files.modifiedTime(doc.path);
+  doc.updateDirty();
+  refreshChrome();
+  if (doc === active) {
+    renderNow();
+    refreshOutline();
+  }
+}
+
+let checkingExternal = false;
+async function checkExternalChanges() {
+  if (!files || checkingExternal) return;
+  checkingExternal = true;
+  try {
+    for (const doc of [...docs]) {
+      if (!doc.path || doc.mtime === null) continue;
+      const mtime = await files.modifiedTime(doc.path);
+      if (mtime === null || mtime <= doc.mtime) continue;
+      if (!doc.dirty) {
+        await reloadFromDisk(doc);
+        continue;
+      }
+      activate(doc);
+      const reload = await files.confirm(
+        `"${doc.name}" was changed on disk and you also have unsaved edits.\n\nReload it from disk and lose your edits?`
+      );
+      if (reload) await reloadFromDisk(doc);
+      else doc.mtime = mtime; // keep the in-editor version; don't ask again until the next change
+    }
+  } finally {
+    checkingExternal = false;
   }
 }
 
@@ -623,7 +860,9 @@ async function saveDoc(doc, forceDialog = false) {
   doc.path = path;
   doc.kind = kindOf(path);
   doc.savedDoc = doc.state.doc;
+  doc.mtime = await files.modifiedTime(path);
   doc.updateDirty();
+  addRecent(path);
   refreshChrome();
   if (doc.kind === "css" && styles.nameFor(path)) refreshStyleList();
   return true;
@@ -695,6 +934,7 @@ function refreshChrome() {
   if (tauriWindow) tauriWindow.setTitle(title).catch(() => {});
   document.title = title;
   statusPath.textContent = active ? active.path || active.name : "";
+  saveSession();
 }
 
 function updateCursorStatus() {
@@ -736,6 +976,7 @@ const actions = {
   "toggle-writing": () => setWritingMode(!writing),
   "toggle-outline": () => setOutlineVisible(!outlineVisible),
   "toggle-clean": () => setCleanMode(!clean),
+  "toggle-restore-session": () => setRestoreSession(!restoreSession),
   "font-increase": () => setFontSize(fontSize + 1),
   "font-decrease": () => setFontSize(fontSize - 1),
   "font-reset": () => setFontSize(FONT_DEFAULT),
@@ -816,6 +1057,7 @@ $("toggle-outline").addEventListener("click", () => runAction("toggle-outline", 
 // Images: paste from the clipboard, drop from Explorer
 
 const IMAGE_EXT = /\.(png|jpe?g|gif|webp|svg|bmp|avif)$/i;
+const DOC_EXT = /\.(md|markdown|mdown|mkd|txt|css)$/i;
 
 /** Insert an image link at the cursor, relative to the document when possible. */
 function insertImageLink(absolutePath, alt = "") {
@@ -862,7 +1104,10 @@ if (tauriWebview) {
       if (event.payload.type !== "drop") return;
       const paths = event.payload.paths || [];
       if (!active || active.kind !== "markdown") return;
-      for (const p of paths) if (IMAGE_EXT.test(p)) insertImageLink(p);
+      for (const p of paths) {
+        if (IMAGE_EXT.test(p)) insertImageLink(p);
+        else if (DOC_EXT.test(p)) openPath(p);
+      }
     })
     .catch((err) => console.warn("drag-drop unavailable", err));
 }
@@ -975,6 +1220,8 @@ if (isTauri) {
     await appMenu.setWritingChecked(writing);
     await appMenu.setOutlineChecked(outlineVisible);
     await appMenu.setCleanChecked(clean);
+    await appMenu.setRestoreSessionChecked(restoreSession);
+    refreshRecentMenu();
     contextMenu = await menu.createPreviewContextMenu(() => {
       if (jumpTarget !== null) sync.jumpTo(jumpTarget);
     });
@@ -983,13 +1230,36 @@ if (isTauri) {
   }
 
   tauriWindow.onCloseRequested(async (event) => {
+    await saveWindowState();
     if (!(await closeAll())) event.preventDefault();
   });
 
-  // Pick up stylesheets added or removed outside the app.
+  // Coming back to the window: pick up stylesheets added or removed outside
+  // the app, and files changed on disk.
   tauriWindow.onFocusChanged(({ payload: focused }) => {
-    if (focused) refreshStyleList();
+    if (!focused) return;
+    refreshStyleList();
+    checkExternalChanges();
   });
+
+  // Files handed to an already-running instance (Explorer, a second launch).
+  const { listen } = await import("@tauri-apps/api/event");
+  listen("open-files", async (event) => {
+    for (const p of event.payload || []) if (DOC_EXT.test(p)) await openPath(p);
+  });
+}
+
+/** Files passed on this launch's command line (Explorer "Open with", double-click). */
+async function launchFiles() {
+  if (!isTauri) return [];
+  try {
+    const { invoke } = await import("@tauri-apps/api/core");
+    const args = await invoke("launch_args");
+    return (args || []).filter((p) => DOC_EXT.test(p));
+  } catch (err) {
+    console.warn("launch_args failed", err);
+    return [];
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -1025,9 +1295,19 @@ try {
 } catch {
   /* ignore */
 }
-if (new URLSearchParams(location.search).has("sample")) addDoc({ text: sampleText });
-else if (firstLaunch) openWelcome();
-else newDoc();
+// What to show: files from the command line win; then the previous session if
+// that option is on; then the welcome page on first launch; else a blank tab.
+if (new URLSearchParams(location.search).has("sample")) {
+  addDoc({ text: sampleText });
+} else {
+  let opened = 0;
+  for (const p of await launchFiles()) if (await openPath(p)) opened++;
+  if (!opened && restoreSession && files) opened = await restoreLastSession();
+  if (!opened) {
+    if (firstLaunch) openWelcome();
+    else newDoc();
+  }
+}
 
 // Dev-only console hook for poking at the running app.
 if (import.meta.env.DEV) {

@@ -15,11 +15,24 @@ export async function installAppMenu(run, themePref) {
     MenuItem.new({ id, text, accelerator: accelerator || undefined, action: () => run(id, "menu") });
   const separator = () => PredefinedMenuItem.new({ item: "Separator" });
 
+  const recentMenu = await Submenu.new({ text: "Open &Recent", items: [] });
+  // Rebuilds are serialized: opening several files fires them in quick
+  // succession, and interleaved remove/append calls would duplicate entries.
+  let recentUpdate = Promise.resolve();
+
+  const restoreItem = await CheckMenuItem.new({
+    id: "toggle-restore-session",
+    text: "Restore &Session on Startup",
+    checked: false,
+    action: () => run("toggle-restore-session", "menu"),
+  });
+
   const file = await Submenu.new({
     text: "&File",
     items: [
       await item("new", "&New", "CmdOrCtrl+N"),
       await item("open", "&Open…", "CmdOrCtrl+O"),
+      recentMenu,
       await separator(),
       await item("save", "&Save", "CmdOrCtrl+S"),
       await item("save-as", "Save &As…", "CmdOrCtrl+Shift+S"),
@@ -27,6 +40,9 @@ export async function installAppMenu(run, themePref) {
       await item("export-pdf", "&Export to PDF…", "CmdOrCtrl+P"),
       await separator(),
       await item("close-tab", "&Close Tab", "CmdOrCtrl+W"),
+      await separator(),
+      restoreItem,
+      await separator(),
       await item("quit", "E&xit"),
     ],
   });
@@ -156,6 +172,33 @@ export async function installAppMenu(run, themePref) {
 
     async setCleanChecked(on) {
       await cleanItem.setChecked(on);
+    },
+
+    async setRestoreSessionChecked(on) {
+      await restoreItem.setChecked(on);
+    },
+
+    /** Rebuild File > Open Recent. `onOpen(path)` opens one; `onClear()` empties the list. */
+    setRecentFiles(paths, onOpen, onClear) {
+      recentUpdate = recentUpdate
+        .then(async () => {
+          // Clear whatever the submenu actually holds, not a local copy of it.
+          for (const item of await recentMenu.items()) await recentMenu.remove(item);
+          const items = [];
+          if (!paths.length) {
+            items.push(await MenuItem.new({ text: "(empty)", enabled: false }));
+          } else {
+            for (const path of paths) {
+              const name = path.split(/[\\/]/).pop();
+              items.push(await MenuItem.new({ text: `${name}    ${path}`, action: () => onOpen(path) }));
+            }
+            items.push(await PredefinedMenuItem.new({ item: "Separator" }));
+            items.push(await MenuItem.new({ text: "&Clear Recent", action: () => onClear() }));
+          }
+          await recentMenu.append(items);
+        })
+        .catch((err) => console.warn("recent menu update failed", err));
+      return recentUpdate;
     },
 
     /** Replace the stylesheet radio items with `names`, checking `activeName`. */
