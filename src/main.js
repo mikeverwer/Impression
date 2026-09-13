@@ -177,6 +177,40 @@ function scheduleOutline() {
   outlineTimer = setTimeout(refreshOutline, 250);
 }
 
+// Outline width: drag the handle on its right edge.
+const OUTLINE_WIDTH_KEY = "outline-width";
+const outlineEl = $("outline");
+const outlineResizer = $("outline-resizer");
+
+function setOutlineWidth(px, persist = true) {
+  const width = Math.max(140, Math.min(600, Math.round(px)));
+  outlineEl.style.setProperty("--outline-width", `${width}px`);
+  if (persist) storeNumber(OUTLINE_WIDTH_KEY, width);
+}
+
+setOutlineWidth(readNumber(OUTLINE_WIDTH_KEY) || 240, false);
+
+outlineResizer.addEventListener("pointerdown", (e) => {
+  e.preventDefault();
+  outlineResizer.setPointerCapture(e.pointerId);
+  document.body.classList.add("resizing-outline");
+  const left = outlineEl.getBoundingClientRect().left;
+  const move = (ev) => setOutlineWidth(ev.clientX - left, false);
+  const up = () => {
+    outlineResizer.removeEventListener("pointermove", move);
+    outlineResizer.removeEventListener("pointerup", up);
+    outlineResizer.removeEventListener("pointercancel", up);
+    document.body.classList.remove("resizing-outline");
+    setOutlineWidth(parseFloat(outlineEl.style.getPropertyValue("--outline-width")) || 240);
+    view.requestMeasure();
+    sync.refresh();
+  };
+  outlineResizer.addEventListener("pointermove", move);
+  outlineResizer.addEventListener("pointerup", up);
+  outlineResizer.addEventListener("pointercancel", up);
+});
+outlineResizer.addEventListener("dblclick", () => setOutlineWidth(240));
+
 function setOutlineVisible(on, persist = true) {
   outlineVisible = on;
   document.body.classList.toggle("outline-hidden", !on);
@@ -305,6 +339,33 @@ function setWritingMode(on, persist = true) {
     }
   }
   if (appMenu) appMenu.setWritingChecked(on).catch(() => {});
+}
+
+// ---- clean view -------------------------------------------------------------
+// Hides the line-number gutter and the status bar. Entering it also switches
+// to writing mode and hides the outline; leaving it only restores the gutter
+// and status bar.
+
+const CLEAN_KEY = "clean-mode";
+let clean = false;
+
+function setCleanMode(on, persist = true) {
+  if (on === clean) return;
+  clean = on;
+  document.body.classList.toggle("clean-mode", on);
+  if (on) {
+    setWritingMode(true, persist);
+    if (outlineVisible) setOutlineVisible(false, persist);
+  }
+  if (persist) {
+    try {
+      localStorage.setItem(CLEAN_KEY, on ? "1" : "0");
+    } catch {
+      /* ignore */
+    }
+  }
+  view.requestMeasure();
+  if (appMenu) appMenu.setCleanChecked(on).catch(() => {});
 }
 
 // Ctrl+wheel: font size over the editor, zoom over the preview. Both stop
@@ -611,6 +672,7 @@ const actions = {
   "toggle-preview": () => setPreviewVisible(!previewVisible),
   "toggle-writing": () => setWritingMode(!writing),
   "toggle-outline": () => setOutlineVisible(!outlineVisible),
+  "toggle-clean": () => setCleanMode(!clean),
   "font-increase": () => setFontSize(fontSize + 1),
   "font-decrease": () => setFontSize(fontSize - 1),
   "font-reset": () => setFontSize(FONT_DEFAULT),
@@ -651,6 +713,7 @@ const SHORTCUTS = {
   "ctrl+shift+p": "toggle-preview",
   "ctrl+shift+w": "toggle-writing",
   "ctrl+shift+o": "toggle-outline",
+  "ctrl+shift+c": "toggle-clean",
   "ctrl+shift+e": "edit-styles",
   "ctrl+w": "close-tab",
   "ctrl+tab": "next-tab",
@@ -780,6 +843,7 @@ if (isTauri) {
     await refreshStyleList();
     await appMenu.setWritingChecked(writing);
     await appMenu.setOutlineChecked(outlineVisible);
+    await appMenu.setCleanChecked(clean);
     contextMenu = await menu.createPreviewContextMenu(() => {
       if (jumpTarget !== null) sync.jumpTo(jumpTarget);
     });
@@ -816,6 +880,11 @@ try {
 }
 document.body.classList.toggle("outline-hidden", !outlineWanted);
 if (outlineWanted) setOutlineVisible(true, false);
+try {
+  if (localStorage.getItem(CLEAN_KEY) === "1") setCleanMode(true, false);
+} catch {
+  /* ignore */
+}
 
 // Dev-only console hook for poking at the running app.
 if (import.meta.env.DEV) {

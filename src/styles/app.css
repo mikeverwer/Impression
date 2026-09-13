@@ -139,21 +139,41 @@ body {
 /* ---------- Outline panel ---------------------------------------- */
 
 #outline {
-  flex: 0 0 240px;
-  width: 240px;
+  --outline-width: 240px;
+  flex: 0 0 var(--outline-width);
+  width: var(--outline-width);
   min-width: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   background: var(--cm-gutter-bg);
-  border-right: 1px solid var(--ui-border);
-  transition: flex-basis 0.2s ease, width 0.2s ease, border-color 0.2s ease;
+  transition: flex-basis 0.2s ease, width 0.2s ease;
 }
 body.outline-hidden #outline {
   flex-basis: 0;
   width: 0;
-  border-right-width: 0;
 }
+body.resizing-outline #outline { transition: none; }
+
+#outline-resizer {
+  flex: none;
+  width: 5px;
+  background: var(--ui-border);
+  cursor: col-resize;
+}
+#outline-resizer:hover,
+body.resizing-outline #outline-resizer { background: var(--color-accent); }
+body.outline-hidden #outline-resizer { display: none; }
+body.resizing-outline { cursor: col-resize; user-select: none; }
+body.resizing-outline #editor-pane,
+body.resizing-outline #preview-pane,
+body.resizing-outline #outline { pointer-events: none; }
+
+/* ---------- Clean view: no gutter, no status bar ------------------ */
+
+body.clean-mode #editor-pane .cm-gutters { display: none; }
+body.clean-mode #editor-pane .cm-line { padding-left: 28px; }
+body.clean-mode #statusbar { display: none; }
 
 #outline-header {
   flex: none;

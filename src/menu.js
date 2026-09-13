@@ -104,11 +104,20 @@ export async function installAppMenu(run, themePref) {
     action: () => run("toggle-outline", "menu"),
   });
 
+  const cleanItem = await CheckMenuItem.new({
+    id: "toggle-clean",
+    text: "&Clean View",
+    accelerator: "CmdOrCtrl+Shift+C",
+    checked: false,
+    action: () => run("toggle-clean", "menu"),
+  });
+
   const view = await Submenu.new({
     text: "&View",
     items: [
       outlineItem,
       writingItem,
+      cleanItem,
       await item("toggle-preview", "Toggle &Preview", "CmdOrCtrl+Shift+P"),
       await item("reset-split", "&Reset Split"),
       await separator(),
@@ -135,6 +144,10 @@ export async function installAppMenu(run, themePref) {
 
     async setOutlineChecked(on) {
       await outlineItem.setChecked(on);
+    },
+
+    async setCleanChecked(on) {
+      await cleanItem.setChecked(on);
     },
 
     /** Replace the stylesheet radio items with `names`, checking `activeName`. */
