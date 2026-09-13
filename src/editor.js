@@ -43,7 +43,8 @@ function makeTheme(dark) {
         height: "100%",
         backgroundColor: "var(--cm-bg)",
         color: "var(--cm-fg)",
-        fontSize: "14px",
+        // font-size comes from fontCompartment only; a value here would
+        // compete with it (theme rules share specificity).
       },
       ".cm-scroller": {
         fontFamily: "var(--font-mono)",
@@ -88,7 +89,11 @@ const themeCompartment = new Compartment();
 // gutter aligned (an external CSS change would leave stale measurements).
 const fontCompartment = new Compartment();
 let currentFontSize = 14;
-const fontTheme = (px) => EditorView.theme({ "&": { fontSize: `${px}px` } });
+const fontThemes = new Map(); // one mounted stylesheet per size
+function fontTheme(px) {
+  if (!fontThemes.has(px)) fontThemes.set(px, EditorView.theme({ "&": { fontSize: `${px}px` } }));
+  return fontThemes.get(px);
+}
 
 // Writing mode (inline rendering) is only meaningful for markdown documents.
 const writingCompartment = new Compartment();
