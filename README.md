@@ -73,6 +73,10 @@ Writing mode is drawn by the editor, not by the preview stylesheet, so it can't 
 
 Chromium's print dialog adds date/title headers and footers by default. Untick "Headers and footers" under More settings once; the app's WebView2 profile remembers the choice. There is no API to preset it.
 
+## Welcome document
+
+The first launch opens a bundled welcome document with the shortcut list and a markdown cheatsheet; Help > Welcome (Ctrl+Shift+H) reopens it, and Help > Keyboard Shortcuts opens it scrolled to the shortcuts. It's an ordinary unsaved tab, so it can be edited or saved as a copy. An empty editor shows a one-line hint pointing at these commands.
+
 ## Shortcuts
 
 | Keys | Action |
@@ -84,6 +88,7 @@ Chromium's print dialog adds date/title headers and footers by default. Untick "
 | Ctrl+Shift+O | Show / hide the outline |
 | Ctrl+Shift+C | Clean view (no gutter or status bar; enters writing mode, hides outline) |
 | Ctrl+Shift+E | Edit preview styles |
+| Ctrl+Shift+H | Welcome document (shortcuts and markdown cheatsheet) |
 | Ctrl+Shift+. / Ctrl+Shift+, | Editor font size up / down (also Ctrl+wheel over the editor; reset via View menu). Ctrl with `=`, `-` or `0` can't be used for these: the webview reserves those combinations as browser zoom keys and never passes them to the app. |
 | Ctrl+Shift+] / Ctrl+Shift+[ | Preview zoom in / out (also Ctrl+wheel over the preview; reset via View menu) |
 | Ctrl+W | Close tab |

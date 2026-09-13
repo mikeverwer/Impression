@@ -16,6 +16,7 @@ import { EditorView } from "@codemirror/view";
 import { exportPdf } from "./print.js";
 import * as styles from "./styles.js";
 import sampleText from "./sample.md?raw";
+import welcomeText from "./welcome.md?raw";
 
 const isTauri = Boolean(window.__TAURI_INTERNALS__);
 
@@ -73,14 +74,16 @@ function kindOf(path) {
 }
 
 class Doc {
-  constructor({ path = null, text = "", eol = "\n", kind = kindOf(path) } = {}) {
+  constructor({ path = null, text = "", eol = "\n", kind = kindOf(path), title = null } = {}) {
     this.id = ++docSeq;
     this.path = path;
     this.eol = eol;
     this.kind = kind;
-    this.untitled = path ? 0 : ++untitledSeq;
+    this.title = title; // display name for pathless documents such as Welcome
+    this.untitled = path || title ? 0 : ++untitledSeq;
     this.state = editor.newState(text, kind);
-    this.savedDoc = path ? this.state.doc : null;
+    // Files and built-in documents start clean; a blank Untitled is dirty once typed in.
+    this.savedDoc = path || title ? this.state.doc : null;
     this.dirty = false;
     this.editorScroll = 0;
     this.previewScroll = 0;
@@ -89,6 +92,7 @@ class Doc {
 
   get name() {
     if (this.path) return this.path.split(/[\\/]/).pop();
+    if (this.title) return this.title;
     return this.untitled > 1 ? `Untitled ${this.untitled}` : "Untitled";
   }
 
@@ -117,6 +121,7 @@ const editor = createEditor({
     { key: "Mod-b", run: () => (runAction("bold", "key"), true) },
     { key: "Mod-i", run: () => (runAction("italic", "key"), true) },
   ],
+  emptyHint: "Start typing, or: Ctrl+N new file · Ctrl+O open · Ctrl+Shift+H welcome and shortcuts",
   onUpdate(update) {
     if (!active) return;
     active.state = update.state;
@@ -473,6 +478,24 @@ function newDoc() {
   addDoc();
 }
 
+/** Open the bundled welcome document (reusing its tab if already open). */
+function openWelcome(scrollToShortcuts = false) {
+  let doc = docs.find((d) => d.title === "Welcome");
+  if (doc) activate(doc);
+  else doc = addDoc({ text: welcomeText, title: "Welcome" });
+  if (scrollToShortcuts) {
+    const text = doc.state.doc;
+    for (let n = 1; n <= text.lines; n++) {
+      if (text.line(n).text.startsWith("## Keyboard shortcuts")) {
+        sync.master = "editor";
+        view.dispatch({ effects: EditorView.scrollIntoView(text.line(n).from, { y: "start", yMargin: 8 }) });
+        break;
+      }
+    }
+  }
+  return doc;
+}
+
 async function closeDoc(doc) {
   if (doc.dirty) {
     activate(doc);
@@ -680,6 +703,8 @@ const actions = {
   "zoom-out": () => setZoom(zoom - ZOOM_STEP),
   "zoom-reset": () => setZoom(ZOOM_DEFAULT),
   "edit-styles": () => editStyles(),
+  welcome: () => openWelcome(),
+  shortcuts: () => openWelcome(true),
   "refresh-styles": () => refreshStyleList(),
   "open-styles-folder": () => openStylesFolder(),
 };
@@ -715,6 +740,7 @@ const SHORTCUTS = {
   "ctrl+shift+o": "toggle-outline",
   "ctrl+shift+c": "toggle-clean",
   "ctrl+shift+e": "edit-styles",
+  "ctrl+shift+h": "welcome",
   "ctrl+w": "close-tab",
   "ctrl+tab": "next-tab",
   "ctrl+shift+tab": "prev-tab",
@@ -864,7 +890,17 @@ if (isTauri) {
 // ---------------------------------------------------------------------------
 // Start
 
+// First launch opens the welcome document; afterwards a blank tab.
+const WELCOMED_KEY = "welcomed";
+let firstLaunch = false;
+try {
+  firstLaunch = !localStorage.getItem(WELCOMED_KEY);
+  localStorage.setItem(WELCOMED_KEY, "1");
+} catch {
+  /* ignore */
+}
 if (new URLSearchParams(location.search).has("sample")) addDoc({ text: sampleText });
+else if (firstLaunch) openWelcome();
 else newDoc();
 
 try {

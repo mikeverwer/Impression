@@ -129,7 +129,15 @@ export async function installAppMenu(run, themePref) {
     ],
   });
 
-  const menu = await Menu.new({ items: [file, edit, view] });
+  const help = await Submenu.new({
+    text: "&Help",
+    items: [
+      await item("welcome", "&Welcome", "CmdOrCtrl+Shift+H"),
+      await item("shortcuts", "&Keyboard Shortcuts"),
+    ],
+  });
+
+  const menu = await Menu.new({ items: [file, edit, view, help] });
   if (navigator.userAgent.includes("Mac")) await menu.setAsAppMenu();
   else await menu.setAsWindowMenu();
 

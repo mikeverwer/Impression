@@ -13,6 +13,7 @@ import {
   rectangularSelection,
   crosshairCursor,
   highlightSpecialChars,
+  placeholder,
 } from "@codemirror/view";
 import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirror/commands";
 import { syntaxHighlighting, HighlightStyle, bracketMatching, indentOnInput, indentUnit } from "@codemirror/language";
@@ -73,6 +74,7 @@ function makeTheme(dark) {
       ".cm-searchMatch": { backgroundColor: "var(--cm-match)", outline: "1px solid var(--cm-cursor)" },
       ".cm-searchMatch.cm-searchMatch-selected": { backgroundColor: "var(--cm-selection)" },
       ".cm-matchingBracket": { backgroundColor: "var(--cm-match)" },
+      ".cm-placeholder": { color: "var(--cm-gutter-fg)", fontStyle: "italic" },
       ".cm-panels": { backgroundColor: "var(--ui-bg)", color: "var(--ui-text)" },
       ".cm-panels.cm-panels-bottom": { borderTop: "1px solid var(--ui-border)" },
       ".cm-panel input, .cm-panel button": { fontFamily: "var(--font-body)" },
@@ -259,8 +261,9 @@ function languageFor(kind) {
  * ViewUpdate. `newState(text, kind)` builds a state for a "markdown" or
  * "css" document.
  */
-export function createEditor({ parent, theme, keys = [], onUpdate }) {
+export function createEditor({ parent, theme, keys = [], onUpdate, emptyHint = "" }) {
   const extensionsFor = (kind) => [
+    kind === "markdown" && emptyHint ? placeholder(emptyHint) : [],
     themeCompartment.of(themes[theme] || themes.light),
     fontCompartment.of(fontTheme(currentFontSize)),
     languageCompartment.of(languageFor(kind)),
