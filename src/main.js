@@ -14,6 +14,8 @@ import { TabBar } from "./tabs.js";
 import { OutlinePanel, extractHeadings } from "./outline.js";
 import { EditorView } from "@codemirror/view";
 import { exportPdf } from "./print.js";
+import { insertTable, moveCell, formatTable } from "./tables.js";
+import { buildHtml } from "./export.js";
 import * as styles from "./styles.js";
 import sampleText from "./sample.md?raw";
 import welcomeText from "./welcome.md?raw";
@@ -226,6 +228,11 @@ const editor = createEditor({
   keys: [
     { key: "Mod-b", run: () => (runAction("bold", "key"), true) },
     { key: "Mod-i", run: () => (runAction("italic", "key"), true) },
+    { key: "Mod-t", run: () => (runAction("insert-table", "key"), true) },
+    { key: "Mod-Shift-t", run: () => (runAction("format-table", "key"), true) },
+    // Only handled inside a table; elsewhere these fall through to indenting.
+    { key: "Tab", run: (v) => moveCell(v, 1) },
+    { key: "Shift-Tab", run: (v) => moveCell(v, -1) },
   ],
   emptyHint: "Start typing, or: Ctrl+N new file · Ctrl+O open · Ctrl+Shift+H welcome and shortcuts",
   onPasteImage: (file) => pasteImage(file),
@@ -253,6 +260,10 @@ const sync = new ScrollSync({ view, editorPane, previewPane, preview });
 const tabBar = new TabBar($("tabs"), {
   onSelect: (doc) => activate(doc),
   onClose: (doc) => closeDoc(doc),
+  onReorder: (from, to) => {
+    docs.splice(to, 0, docs.splice(from, 1)[0]);
+    refreshChrome();
+  },
 });
 
 // ---------------------------------------------------------------------------
@@ -703,6 +714,32 @@ async function openPath(path) {
   }
 }
 
+/** Write the rendered document out as a single self-contained HTML file. */
+async function exportHtml() {
+  if (!files) return console.warn("Exporting needs the Tauri runtime.");
+  const source = previewDoc();
+  if (!source) return;
+  const base = source.name.replace(/\.[^.]+$/, "");
+  const suggested = source.path ? source.path.replace(/\.[^.\\/]+$/, "") + ".html" : `${base}.html`;
+  const path = await files.pickSavePath(suggested, "html", "Export to HTML");
+  if (!path) return;
+  try {
+    // The preview may be collapsed (writing mode) or stale; render it first so
+    // diagrams and math are present in the clone.
+    await renderNow(currentTheme(), { force: true });
+    const { html, failed } = await buildHtml(preview, styles.activeText(), base, files.readBinaryFile);
+    await files.writeFile(path, html);
+    if (failed.length) {
+      await files.showError(
+        `Exported to ${path}, but these images could not be embedded and will be missing:\n\n${failed.join("\n")}`
+      );
+    }
+  } catch (err) {
+    console.error(err);
+    await files.showError(`Could not export ${path}\n\n${err}`);
+  }
+}
+
 // ---- recent files -----------------------------------------------------------
 
 const RECENT_KEY = "recent-files";
@@ -962,6 +999,9 @@ const actions = {
   save: () => active && saveDoc(active),
   "save-as": () => active && saveDoc(active, true),
   "export-pdf": () => exportPdf({ preview, rerender: (theme) => renderNow(theme, { force: true }), currentTheme }),
+  "export-html": () => exportHtml(),
+  "insert-table": () => insertTable(view),
+  "format-table": () => formatTable(view),
   "close-tab": () => active && closeDoc(active),
   quit: () => (tauriWindow ? tauriWindow.close() : window.close()),
   bold: () => toggleBold(view),
@@ -1022,6 +1062,8 @@ const SHORTCUTS = {
   "ctrl+shift+c": "toggle-clean",
   "ctrl+shift+e": "edit-styles",
   "ctrl+shift+h": "welcome",
+  // Ctrl+T and Ctrl+Shift+T are bound in the editor keymap instead; listing
+  // them here too would run the action twice for one keypress.
   "ctrl+w": "close-tab",
   "ctrl+tab": "next-tab",
   "ctrl+shift+tab": "prev-tab",

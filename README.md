@@ -60,9 +60,22 @@ The preview (and the PDF) is styled by one stylesheet at a time. View > Preview 
 - `.md` and `.markdown` files are associated with the app by the installers, so double-clicking one in Explorer opens it; so does `impression.exe file.md` from a terminal. A second launch hands its files to the running window instead of opening another.
 - Drop `.md`, `.txt` or `.css` files onto the window to open them.
 - File > Open Recent lists the last ten files opened or saved.
+- Tabs can be dragged into a different order.
 - File > Restore Session on Startup (off by default) reopens the files that were open when the app was last closed. Files given on the command line take precedence.
 - Window size and position are remembered.
 - When the window regains focus, open files are checked against the disk: a file changed elsewhere reloads silently if the tab has no unsaved edits, otherwise you are asked whether to reload.
+
+## Tables
+
+Edit > Insert Table (Ctrl+T) drops in a blank 2x2 table with the caret in the first heading cell. Tab and Shift+Tab move between cells, skipping the delimiter row and wrapping to the next row; outside a table they indent as usual. Edit > Format Table (Ctrl+Shift+T) re-aligns the pipes of the table around the caret, preserving any `:` alignment markers.
+
+## Export to HTML
+
+File > Export to HTML writes one self-contained file: the active preview stylesheet and theme tokens are inlined, local images are embedded as data URIs, and Mermaid diagrams travel as the SVG they already are. A document containing math also links KaTeX's stylesheet from a CDN, since its fonts cannot be inlined at a sensible size; documents without math need no network at all.
+
+## Front matter
+
+A `---` fenced block at the very top of a file (the metadata a static-site generator reads) renders as a muted block instead of a stray horizontal rule, and is hidden when printing. Both behaviours are ordinary rules in the preview stylesheet, so a user stylesheet can change them.
 
 ## Images
 
@@ -83,6 +96,8 @@ View > Clean View (Ctrl+Shift+C) hides the line-number gutter and the status bar
 ## Writing mode
 
 View > Writing Mode (Ctrl+Shift+W) collapses the preview and renders markdown inline in the editor, Obsidian-style: heading, emphasis, code, link and strikethrough markers are hidden, `>` becomes a quote bar, bullets become •, task markers become clickable checkboxes and `---` becomes a rule. The line under the cursor always shows its raw source. Fenced code, tables, math, images, footnotes and definition lists stay as source (the preview and PDF still render them). Turning the mode off restores the preview.
+
+Writing mode also scrolls like a typewriter: the caret line stays vertically centred as you type or move by keyboard. Clicking somewhere leaves the view where it is.
 
 Writing mode is drawn by the editor, not by the preview stylesheet, so it can't pick up arbitrary rules from `user_styles.css`. It does use the same design tokens (`--font-markdown`, `--color-accent`, `--color-body-text`, `--color-inline-code-text`), so overriding those in a user stylesheet changes both. Export to PDF works from writing mode; it renders the hidden preview for the print.
 
@@ -109,6 +124,8 @@ The first launch opens a bundled welcome document with the shortcut list and a m
 | Ctrl+W | Close tab |
 | Ctrl+Tab, Ctrl+Shift+Tab | Next / previous tab |
 | Ctrl+B / Ctrl+I | Toggle bold / italic |
+| Ctrl+T / Ctrl+Shift+T | Insert table / re-align the table at the caret |
+| Tab / Shift+Tab | Next / previous table cell (indents outside a table) |
 | Ctrl+F | Find in editor |
 | Right-click in preview | Copy, Select All, Jump to Source |
 

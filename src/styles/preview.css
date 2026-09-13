@@ -270,6 +270,20 @@
       0 2px 0 0 rgb(255 255 255 / 0.7) inset;
   }
 
+  /* ---------- YAML front matter (metadata block at the top of the file) */
+  .front-matter {
+    margin-bottom: 16px;
+    padding: 10px 14px;
+    border-left: 3px solid var(--color-accent-dim);
+    border-radius: 3px;
+    background-color: var(--color-inline-code-bg);
+    color: var(--color-quote-text);
+    font-family: var(--font-mono);
+    font-size: 0.8em;
+    line-height: 1.5;
+    white-space: pre-wrap;
+  }
+
   /* ---------- Footnotes (markdown-it-footnote) */
   .footnotes { font-size: 0.9em; color: var(--color-quote-text); }
   .footnotes-sep { height: 2px; margin: 2em 0 1em; }
@@ -375,6 +389,10 @@
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
+
+  /* Front matter is metadata for a site generator, not part of the document.
+     Delete this rule in your own stylesheet if you want it on the page. */
+  .markdown-body .front-matter { display: none; }
 
   .markdown-body pre,
   .markdown-body .table-wrapper,

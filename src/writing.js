@@ -291,7 +291,40 @@ const theme = EditorView.theme({
   },
 });
 
+// Typewriter scrolling: keep the caret line vertically centred while writing.
+// Skipped for mouse selection, so clicking somewhere doesn't yank the view.
+//
+// The scroll offset is computed from measured line geometry rather than a
+// scrollIntoView effect: a jump into a region CodeMirror has not measured yet
+// resolves against estimated heights and lands well off centre.
+
+function centreTarget(view) {
+  const block = view.lineBlockAt(view.state.selection.main.head);
+  return block.top + view.documentPadding.top + block.height / 2 - view.scrollDOM.clientHeight / 2;
+}
+
+function applyScroll(view, target) {
+  const max = Math.max(0, view.scrollDOM.scrollHeight - view.scrollDOM.clientHeight);
+  const next = Math.max(0, Math.min(target, max));
+  if (Math.abs(view.scrollDOM.scrollTop - next) > 1) view.scrollDOM.scrollTop = next;
+}
+
+const typewriter = EditorView.updateListener.of((update) => {
+  if (!update.docChanged && !update.selectionSet) return;
+  if (update.transactions.some((tr) => tr.isUserEvent("select.pointer"))) return;
+  const view = update.view;
+  view.requestMeasure({
+    read: () => centreTarget(view),
+    write: (target) => applyScroll(view, target),
+  });
+  // After a long jump the first pass used estimated heights; once the new
+  // region is measured, correct it.
+  requestAnimationFrame(() => {
+    if (view.dom.isConnected) applyScroll(view, centreTarget(view));
+  });
+});
+
 /** The writing-mode extension bundle. */
 export function writingMode() {
-  return [plugin, theme];
+  return [plugin, theme, typewriter];
 }

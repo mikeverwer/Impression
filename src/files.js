@@ -1,7 +1,15 @@
 // File dialogs and disk I/O through the Tauri dialog and fs plugins.
 
 import { open, save, message, ask } from "@tauri-apps/plugin-dialog";
-import { readTextFile, writeTextFile, writeFile as writeBytes, mkdir, exists, stat } from "@tauri-apps/plugin-fs";
+import {
+  readTextFile,
+  readFile as readBytes,
+  writeTextFile,
+  writeFile as writeBytesToFile,
+  mkdir,
+  exists,
+  stat,
+} from "@tauri-apps/plugin-fs";
 
 const MARKDOWN_FILTERS = [
   { name: "Markdown", extensions: ["md", "markdown", "mdown", "mkd", "txt"] },
@@ -11,6 +19,11 @@ const MARKDOWN_FILTERS = [
 
 const CSS_FILTERS = [
   { name: "Stylesheet", extensions: ["css"] },
+  { name: "All files", extensions: ["*"] },
+];
+
+const HTML_FILTERS = [
+  { name: "HTML", extensions: ["html", "htm"] },
   { name: "All files", extensions: ["*"] },
 ];
 
@@ -31,12 +44,9 @@ export async function pickFilesToOpen() {
 }
 
 /** Show the Save As dialog; resolves to a path or null. */
-export async function pickSavePath(defaultPath, kind = "markdown") {
-  return save({
-    title: "Save As",
-    defaultPath,
-    filters: kind === "css" ? CSS_FILTERS : MARKDOWN_FILTERS,
-  });
+export async function pickSavePath(defaultPath, kind = "markdown", title = "Save As") {
+  const filters = kind === "css" ? CSS_FILTERS : kind === "html" ? HTML_FILTERS : MARKDOWN_FILTERS;
+  return save({ title, defaultPath, filters });
 }
 
 /** Ask which stylesheet in `dir` to edit; resolves to a path or null. */
@@ -53,6 +63,11 @@ export async function readFile(path) {
   return readTextFile(path);
 }
 
+/** Read a file as bytes (used to embed images in exported HTML). */
+export async function readBinaryFile(path) {
+  return readBytes(path);
+}
+
 export async function writeFile(path, text) {
   await writeTextFile(path, text);
 }
@@ -61,7 +76,7 @@ export async function writeFile(path, text) {
 export async function writeBinaryFile(path, bytes) {
   const dir = dirName(path);
   if (dir && !(await exists(dir))) await mkdir(dir, { recursive: true });
-  await writeBytes(path, bytes);
+  await writeBytesToFile(path, bytes);
 }
 
 export async function fileExists(path) {

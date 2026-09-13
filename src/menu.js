@@ -38,6 +38,7 @@ export async function installAppMenu(run, themePref) {
       await item("save-as", "Save &As…", "CmdOrCtrl+Shift+S"),
       await separator(),
       await item("export-pdf", "&Export to PDF…", "CmdOrCtrl+P"),
+      await item("export-html", "Export to &HTML…"),
       await separator(),
       await item("close-tab", "&Close Tab", "CmdOrCtrl+W"),
       await separator(),
@@ -52,6 +53,9 @@ export async function installAppMenu(run, themePref) {
     items: [
       await item("bold", "&Bold", "CmdOrCtrl+B"),
       await item("italic", "&Italic", "CmdOrCtrl+I"),
+      await separator(),
+      await item("insert-table", "Insert &Table", "CmdOrCtrl+T"),
+      await item("format-table", "&Format Table", "CmdOrCtrl+Shift+T"),
     ],
   });
 

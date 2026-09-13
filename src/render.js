@@ -113,6 +113,38 @@ md.core.ruler.after("inline", "task_lists", (state) => {
   }
 });
 
+// YAML front matter: a "---" fenced block at the very top of the document,
+// used by static-site generators for metadata. Without this it would parse as
+// a horizontal rule followed by stray text.
+md.block.ruler.before(
+  "table",
+  "front_matter",
+  (state, startLine, endLine, silent) => {
+    if (startLine !== 0 || state.blkIndent !== 0 || state.sCount[0] !== 0) return false;
+    const open = state.src.slice(state.bMarks[0] + state.tShift[0], state.eMarks[0]).trim();
+    if (open !== "---") return false;
+
+    let line = 1;
+    for (; line <= endLine; line++) {
+      const text = state.src.slice(state.bMarks[line] + state.tShift[line], state.eMarks[line]).trim();
+      if (text === "---") break;
+    }
+    if (line > endLine) return false; // unterminated: treat as an ordinary rule
+    if (silent) return true;
+
+    const token = state.push("front_matter", "", 0);
+    token.map = [0, line + 1];
+    token.markup = "---";
+    token.content = state.src.slice(state.bMarks[1], state.bMarks[line]).replace(/\n$/, "");
+    state.line = line + 1;
+    return true;
+  },
+  { alt: [] }
+);
+
+md.renderer.rules.front_matter = (tokens, idx, _options, _env, self) =>
+  `<div class="front-matter"${self.renderAttrs(tokens[idx])}>${escapeHtml(tokens[idx].content)}</div>\n`;
+
 // Heading ids so in-document links ([text](#section)) survive into the PDF.
 function slugify(text) {
   return text
@@ -203,21 +235,25 @@ function safeDecode(s) {
   }
 }
 
-/** Turn an image src from the document into something the webview can load. */
+/**
+ * Resolve an image src from the document to something the webview can load.
+ * Returns { url, file }, where `file` is the local path when there is one
+ * (HTML export uses it to inline the image).
+ */
 export function resolveImageSrc(src, baseDir) {
-  if (!src || !assetResolver) return src;
+  if (!src || !assetResolver) return { url: src, file: null };
   let s = src.trim();
   if (/^file:\/\//i.test(s)) {
     s = safeDecode(s.replace(/^file:\/\/\/?/i, ""));
   } else if (/^[a-zA-Z]:[\\/]/.test(s) || s.startsWith("\\\\")) {
     s = safeDecode(s); // absolute Windows path
   } else if (/^[a-z][a-z0-9+.-]*:/i.test(s) || s.startsWith("//") || s.startsWith("#") || s.startsWith("/")) {
-    return src; // http(s), data:, asset URLs, root-relative: leave alone
+    return { url: src, file: null }; // http(s), data:, asset URLs, root-relative
   } else {
-    if (!baseDir) return src; // unsaved document: nothing to resolve against
+    if (!baseDir) return { url: src, file: null }; // unsaved document: nothing to resolve against
     s = joinPath(baseDir, safeDecode(s));
   }
-  return assetResolver(s);
+  return { url: assetResolver(s), file: s };
 }
 
 md.core.ruler.push("resolve_images", (state) => {
@@ -228,8 +264,9 @@ md.core.ruler.push("resolve_images", (state) => {
     for (const child of token.children) {
       if (child.type !== "image") continue;
       const src = child.attrGet("src");
-      const resolved = resolveImageSrc(src, baseDir);
-      if (resolved !== src) child.attrSet("src", resolved);
+      const { url, file } = resolveImageSrc(src, baseDir);
+      if (url !== src) child.attrSet("src", url);
+      if (file) child.attrSet("data-file", file);
     }
   }
 });
@@ -237,10 +274,11 @@ md.core.ruler.push("resolve_images", (state) => {
 /** Resolve <img> tags that came through raw HTML (markdown images are handled in the parser). */
 export function resolveHtmlImages(container, baseDir) {
   if (!assetResolver) return;
-  for (const img of container.querySelectorAll("img[src]")) {
+  for (const img of container.querySelectorAll("img[src]:not([data-file])")) {
     const src = img.getAttribute("src");
-    const resolved = resolveImageSrc(src, baseDir);
-    if (resolved !== src) img.setAttribute("src", resolved);
+    const { url, file } = resolveImageSrc(src, baseDir);
+    if (url !== src) img.setAttribute("src", url);
+    if (file) img.setAttribute("data-file", file);
   }
 }
 

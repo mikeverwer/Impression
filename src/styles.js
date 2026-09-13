@@ -38,6 +38,11 @@ export function defaultText() {
   return defaultCss;
 }
 
+/** The stylesheet text currently in effect. */
+export function activeText() {
+  return styleEl.textContent || defaultCss;
+}
+
 export function activeStyleName() {
   return activeName;
 }
