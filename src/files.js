@@ -1,7 +1,7 @@
 // File dialogs and disk I/O through the Tauri dialog and fs plugins.
 
 import { open, save, message } from "@tauri-apps/plugin-dialog";
-import { readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
+import { readTextFile, writeTextFile, writeFile as writeBytes, mkdir, exists } from "@tauri-apps/plugin-fs";
 
 const MARKDOWN_FILTERS = [
   { name: "Markdown", extensions: ["md", "markdown", "mdown", "mkd", "txt"] },
@@ -55,6 +55,47 @@ export async function readFile(path) {
 
 export async function writeFile(path, text) {
   await writeTextFile(path, text);
+}
+
+/** Write binary data, creating the parent folder if needed. */
+export async function writeBinaryFile(path, bytes) {
+  const dir = dirName(path);
+  if (dir && !(await exists(dir))) await mkdir(dir, { recursive: true });
+  await writeBytes(path, bytes);
+}
+
+export async function fileExists(path) {
+  return exists(path);
+}
+
+/** Folder part of a path (no trailing separator), or "" if none. */
+export function dirName(path) {
+  const i = Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\"));
+  return i >= 0 ? path.slice(0, i) : "";
+}
+
+/** Join a folder and a relative path, resolving "." and ".." segments. */
+export function joinPath(base, rel) {
+  const sep = base.includes("\\") ? "\\" : "/";
+  const parts = base.replace(/[\\/]+$/, "").split(/[\\/]/);
+  for (const seg of rel.split(/[\\/]/)) {
+    if (!seg || seg === ".") continue;
+    if (seg === "..") {
+      if (parts.length > 1) parts.pop();
+    } else parts.push(seg);
+  }
+  return parts.join(sep);
+}
+
+/** Path of `target` relative to folder `fromDir` (forward slashes), or the absolute path if on another drive. */
+export function relativePath(fromDir, target) {
+  const a = fromDir.replace(/[\\/]+$/, "").split(/[\\/]/);
+  const b = target.split(/[\\/]/);
+  if (a[0].toLowerCase() !== b[0].toLowerCase()) return target.replace(/\\/g, "/");
+  let i = 0;
+  while (i < a.length && i < b.length && a[i].toLowerCase() === b[i].toLowerCase()) i++;
+  const up = a.slice(i).map(() => "..");
+  return [...up, ...b.slice(i)].join("/");
 }
 
 /**

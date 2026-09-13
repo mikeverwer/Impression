@@ -169,8 +169,84 @@ md.renderer.rules.table_open = (tokens, idx, _options, _env, self) =>
   `<div class="table-wrapper"${self.renderAttrs(tokens[idx])}><table>`;
 md.renderer.rules.table_close = () => "</table></div>";
 
-export function renderMarkdown(source) {
-  return md.render(source);
+// ---------------------------------------------------------------------------
+// Local images
+//
+// The webview cannot load files from disk directly; the app installs a
+// resolver (Tauri's convertFileSrc) that turns an absolute path into an
+// asset URL. Relative image paths are resolved against the document folder
+// passed as env.baseDir.
+
+let assetResolver = null;
+
+export function setAssetResolver(fn) {
+  assetResolver = fn;
+}
+
+function joinPath(base, rel) {
+  const sep = base.includes("\\") ? "\\" : "/";
+  const parts = base.replace(/[\\/]+$/, "").split(/[\\/]/);
+  for (const seg of rel.split(/[\\/]/)) {
+    if (!seg || seg === ".") continue;
+    if (seg === "..") {
+      if (parts.length > 1) parts.pop();
+    } else parts.push(seg);
+  }
+  return parts.join(sep);
+}
+
+function safeDecode(s) {
+  try {
+    return decodeURIComponent(s);
+  } catch {
+    return s;
+  }
+}
+
+/** Turn an image src from the document into something the webview can load. */
+export function resolveImageSrc(src, baseDir) {
+  if (!src || !assetResolver) return src;
+  let s = src.trim();
+  if (/^file:\/\//i.test(s)) {
+    s = safeDecode(s.replace(/^file:\/\/\/?/i, ""));
+  } else if (/^[a-zA-Z]:[\\/]/.test(s) || s.startsWith("\\\\")) {
+    s = safeDecode(s); // absolute Windows path
+  } else if (/^[a-z][a-z0-9+.-]*:/i.test(s) || s.startsWith("//") || s.startsWith("#") || s.startsWith("/")) {
+    return src; // http(s), data:, asset URLs, root-relative: leave alone
+  } else {
+    if (!baseDir) return src; // unsaved document: nothing to resolve against
+    s = joinPath(baseDir, safeDecode(s));
+  }
+  return assetResolver(s);
+}
+
+md.core.ruler.push("resolve_images", (state) => {
+  const baseDir = state.env && state.env.baseDir;
+  if (!assetResolver) return;
+  for (const token of state.tokens) {
+    if (!token.children) continue;
+    for (const child of token.children) {
+      if (child.type !== "image") continue;
+      const src = child.attrGet("src");
+      const resolved = resolveImageSrc(src, baseDir);
+      if (resolved !== src) child.attrSet("src", resolved);
+    }
+  }
+});
+
+/** Resolve <img> tags that came through raw HTML (markdown images are handled in the parser). */
+export function resolveHtmlImages(container, baseDir) {
+  if (!assetResolver) return;
+  for (const img of container.querySelectorAll("img[src]")) {
+    const src = img.getAttribute("src");
+    const resolved = resolveImageSrc(src, baseDir);
+    if (resolved !== src) img.setAttribute("src", resolved);
+  }
+}
+
+/** Render markdown to HTML; `baseDir` is the document folder for relative images. */
+export function renderMarkdown(source, baseDir = null) {
+  return md.render(source, { baseDir });
 }
 
 // ---------------------------------------------------------------------------

@@ -261,8 +261,24 @@ function languageFor(kind) {
  * ViewUpdate. `newState(text, kind)` builds a state for a "markdown" or
  * "css" document.
  */
-export function createEditor({ parent, theme, keys = [], onUpdate, emptyHint = "" }) {
+export function createEditor({ parent, theme, keys = [], onUpdate, emptyHint = "", onPasteImage = null }) {
+  // Intercept pasted image data (screenshots, copied images); text pastes
+  // fall through to CodeMirror.
+  const pasteHandler = EditorView.domEventHandlers({
+    paste(event) {
+      if (!onPasteImage || !event.clipboardData) return false;
+      const item = Array.from(event.clipboardData.items).find((i) => i.kind === "file" && i.type.startsWith("image/"));
+      if (!item) return false;
+      const file = item.getAsFile();
+      if (!file) return false;
+      event.preventDefault();
+      onPasteImage(file);
+      return true;
+    },
+  });
+
   const extensionsFor = (kind) => [
+    kind === "markdown" ? pasteHandler : [],
     kind === "markdown" && emptyHint ? placeholder(emptyHint) : [],
     themeCompartment.of(themes[theme] || themes.light),
     fontCompartment.of(fontTheme(currentFontSize)),

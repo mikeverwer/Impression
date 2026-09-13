@@ -7,7 +7,7 @@ import "./styles/print.css";
 import "katex/dist/katex.min.css";
 
 import { initTheme, currentTheme, themePreference, setThemePreference, onThemeChange } from "./theme.js";
-import { renderMarkdown, applyCached, enhance } from "./render.js";
+import { renderMarkdown, applyCached, enhance, resolveHtmlImages, setAssetResolver } from "./render.js";
 import { createEditor, toggleBold, toggleItalic } from "./editor.js";
 import { ScrollSync } from "./sync.js";
 import { TabBar } from "./tabs.js";
@@ -25,10 +25,21 @@ const isTauri = Boolean(window.__TAURI_INTERNALS__);
 let files = null;
 let tauriWindow = null;
 let opener = null;
+let tauriWebview = null;
 if (isTauri) {
   files = await import("./files.js");
   tauriWindow = (await import("@tauri-apps/api/window")).getCurrentWindow();
+  tauriWebview = (await import("@tauri-apps/api/webview")).getCurrentWebview();
   opener = await import("@tauri-apps/plugin-opener");
+  // Local images in the preview go through the asset protocol.
+  setAssetResolver((await import("@tauri-apps/api/core")).convertFileSrc);
+}
+
+/** Folder containing a document, or null for unsaved ones. */
+function docDir(doc) {
+  if (!doc || !doc.path) return null;
+  const i = Math.max(doc.path.lastIndexOf("/"), doc.path.lastIndexOf("\\"));
+  return i >= 0 ? doc.path.slice(0, i) : null;
 }
 
 // ---------------------------------------------------------------------------
@@ -122,6 +133,7 @@ const editor = createEditor({
     { key: "Mod-i", run: () => (runAction("italic", "key"), true) },
   ],
   emptyHint: "Start typing, or: Ctrl+N new file · Ctrl+O open · Ctrl+Shift+H welcome and shortcuts",
+  onPasteImage: (file) => pasteImage(file),
   onUpdate(update) {
     if (!active) return;
     active.state = update.state;
@@ -425,7 +437,9 @@ async function renderNow(theme = currentTheme(), { force = false, complete = tru
   const isStale = () => generation !== renderGeneration;
 
   const source = previewDoc();
-  preview.innerHTML = renderMarkdown(source ? source.text() : sampleText);
+  const baseDir = docDir(source);
+  preview.innerHTML = renderMarkdown(source ? source.text() : sampleText, baseDir);
+  resolveHtmlImages(preview, baseDir);
   updateWordCount();
   const pending = applyCached(preview, theme);
   sync.refresh();
@@ -797,6 +811,71 @@ window.addEventListener("keydown", (e) => {
 $("tab-new").addEventListener("click", () => runAction("new", "button"));
 $("toggle-preview").addEventListener("click", () => runAction("toggle-preview", "button"));
 $("toggle-outline").addEventListener("click", () => runAction("toggle-outline", "button"));
+
+// ---------------------------------------------------------------------------
+// Images: paste from the clipboard, drop from Explorer
+
+const IMAGE_EXT = /\.(png|jpe?g|gif|webp|svg|bmp|avif)$/i;
+
+/** Insert an image link at the cursor, relative to the document when possible. */
+function insertImageLink(absolutePath, alt = "") {
+  const dir = docDir(active);
+  const target = dir && files ? files.relativePath(dir, absolutePath) : absolutePath.replace(/\\/g, "/");
+  const href = /[\s()]/.test(target) ? `<${target}>` : target;
+  const { from, to } = view.state.selection.main;
+  const line = view.state.doc.lineAt(from);
+  const prefix = line.text.slice(0, from - line.from).trim() ? "\n" : "";
+  const text = `${prefix}![${alt}](${href})`;
+  // Leave the cursor inside the brackets so the alt text can be typed right away.
+  const cursor = alt ? from + text.length : from + prefix.length + 2;
+  view.dispatch({ changes: { from, to, insert: text }, selection: { anchor: cursor }, userEvent: "input" });
+  view.focus();
+}
+
+/** Save a pasted image beside the document and insert a link to it. */
+async function pasteImage(file) {
+  if (!files) return console.warn("Pasting images needs the Tauri runtime.");
+  if (!active || active.kind !== "markdown") return;
+  const dir = docDir(active);
+  if (!dir) {
+    await files.showError("Save the document first: pasted images are stored in an images folder next to it.");
+    return;
+  }
+  const ext = (file.type.split("/")[1] || "png").replace("jpeg", "jpg").replace(/[^a-z0-9]/gi, "") || "png";
+  const stamp = new Date().toISOString().replace(/[-:]/g, "").replace("T", "-").slice(0, 15);
+  const base = active.name.replace(/\.[^.]+$/, "").replace(/[^\w-]+/g, "_") || "image";
+  const path = files.joinPath(dir, `images/${base}-${stamp}.${ext}`);
+  try {
+    await files.writeBinaryFile(path, new Uint8Array(await file.arrayBuffer()));
+  } catch (err) {
+    console.error(err);
+    await files.showError(`Could not save the image to ${path}\n\n${err}`);
+    return;
+  }
+  insertImageLink(path);
+}
+
+// Files dropped onto the window: image files become links in the editor.
+if (tauriWebview) {
+  tauriWebview
+    .onDragDropEvent((event) => {
+      if (event.payload.type !== "drop") return;
+      const paths = event.payload.paths || [];
+      if (!active || active.kind !== "markdown") return;
+      for (const p of paths) if (IMAGE_EXT.test(p)) insertImageLink(p);
+    })
+    .catch((err) => console.warn("drag-drop unavailable", err));
+}
+
+// Images load after the render; keep the scroll map in step with their height.
+preview.addEventListener(
+  "load",
+  () => {
+    sync.refresh();
+    if (sync.master === "editor") sync.editorToPreview();
+  },
+  true
+);
 
 // ---------------------------------------------------------------------------
 // Preview interactions: links and the context menu

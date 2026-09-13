@@ -55,6 +55,12 @@ The preview (and the PDF) is styled by one stylesheet at a time. View > Preview 
 - Any `.css` file you drop into the styles folder appears in the list after Refresh List (or the next time the window gets focus).
 - Edits to the active stylesheet apply to the preview live; Ctrl+S saves them. While a stylesheet tab is active the preview keeps showing your most recent markdown document.
 
+## Images
+
+Relative image paths (`![](pics/logo.png)`) resolve against the document's folder, in the preview and in the PDF; absolute paths, `file://` URLs and `<img>` tags in raw HTML work too. Unsaved documents have no folder, so relative images only show once the file is saved.
+
+Paste an image from the clipboard into the editor and it is saved as `images/<document>-<timestamp>.png` next to the document with a link inserted at the cursor. Dropping image files from Explorer onto the window inserts links relative to the document.
+
 ## Outline
 
 The button at the left end of the tab bar, View > Outline, or Ctrl+Shift+O slides in a heading outline to the left of the editor. Headings nest by level with collapsible subtrees (collapse state is kept per tab), the heading containing the cursor is highlighted, and clicking one scrolls the editor (and the preview through scroll sync) to it without moving the cursor.
