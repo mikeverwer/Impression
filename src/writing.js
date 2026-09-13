@@ -68,6 +68,8 @@ const hidden = Decoration.replace({});
 const inlineCodeMark = Decoration.mark({ class: "cm-wm-inline-code" });
 const quoteLine = Decoration.line({ class: "cm-wm-quote" });
 const codeLine = Decoration.line({ class: "cm-wm-codeblock" });
+const codeFirstLine = Decoration.line({ class: "cm-wm-codeblock cm-wm-codeblock-first" });
+const codeLastLine = Decoration.line({ class: "cm-wm-codeblock cm-wm-codeblock-last" });
 const h1Line = Decoration.line({ class: "cm-wm-h1" });
 const h2Line = Decoration.line({ class: "cm-wm-h2" });
 
@@ -169,9 +171,15 @@ function buildDecorations(view) {
               ranges.push(Decoration.replace({ widget: ruleWidget }).range(node.from, node.to));
             }
             break;
-          case "FencedCode":
-            eachLine(node.from, node.to, codeLine);
+          case "FencedCode": {
+            const first = doc.lineAt(node.from).number;
+            const last = doc.lineAt(Math.min(node.to, doc.length)).number;
+            for (let n = first; n <= last; n++) {
+              const deco = n === first ? codeFirstLine : n === last ? codeLastLine : codeLine;
+              ranges.push(deco.range(doc.line(n).from));
+            }
             break;
+          }
           default:
             break;
         }
@@ -209,6 +217,14 @@ const theme = EditorView.theme({
     fontSize: "1.1em",
     lineHeight: "1.6",
     color: "var(--color-body-text)",
+    // Code tokens: editor palette by default (see writingHighlightStyle).
+    "--wm-keyword": "var(--cm-keyword)",
+    "--wm-string": "var(--cm-string)",
+    "--wm-comment": "var(--cm-comment)",
+    "--wm-number": "var(--cm-number)",
+    "--wm-type": "var(--cm-type)",
+    "--wm-function": "var(--cm-function)",
+    "--wm-punctuation": "var(--cm-marker)",
   },
   ".cm-wm-h1": { borderBottom: "2px solid var(--color-accent)", paddingBottom: "0.1em", marginBottom: "0.4em" },
   ".cm-wm-h2": { borderBottom: "1px solid var(--color-accent)", paddingBottom: "0.1em", marginBottom: "0.3em" },
@@ -227,10 +243,25 @@ const theme = EditorView.theme({
     fontFamily: "var(--font-mono)",
     fontSize: "0.9em",
   },
+  // Fenced code: the preview's dark slab with its highlight.js palette.
   ".cm-wm-codeblock": {
-    backgroundColor: "var(--cm-codeblock-bg)",
+    backgroundColor: "#383e4a",
+    color: "#eeffff",
     fontFamily: "var(--font-mono)",
     fontSize: "0.9em",
+    padding: "0 16px",
+    "--wm-keyword": "var(--hl-keyword, var(--cm-keyword))",
+    "--wm-string": "var(--hl-string, var(--cm-string))",
+    "--wm-comment": "var(--hl-comment, var(--cm-comment))",
+    "--wm-number": "var(--hl-number, var(--cm-number))",
+    "--wm-type": "var(--hl-type, var(--cm-type))",
+    "--wm-function": "var(--hl-function, var(--cm-function))",
+    "--wm-punctuation": "var(--hl-punctuation, var(--cm-marker))",
+  },
+  ".cm-wm-codeblock-first": { borderRadius: "3px 3px 0 0", paddingTop: "6px" },
+  ".cm-wm-codeblock-last": { borderRadius: "0 0 3px 3px", paddingBottom: "6px" },
+  "&.cm-focused .cm-wm-codeblock.cm-activeLine, .cm-wm-codeblock.cm-activeLine": {
+    backgroundColor: "#434a58",
   },
   ".cm-wm-check": {
     accentColor: "var(--cm-list-mark)",

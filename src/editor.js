@@ -152,16 +152,19 @@ const writingHighlightStyle = HighlightStyle.define([
   { tag: [listMark, quoteMark], color: "var(--cm-list-mark)", fontWeight: "bold" },
   { tag: t.contentSeparator, color: "var(--cm-marker)" },
   { tag: t.escape, color: "var(--cm-marker)" },
-  { tag: t.labelName, color: "var(--cm-type)" },
   { tag: t.tagName, color: "var(--cm-keyword)" },
   { tag: [t.attributeName, t.propertyName], color: "var(--cm-type)" },
-  { tag: [t.keyword, t.modifier, t.operatorKeyword, t.controlKeyword, t.definitionKeyword], color: "var(--cm-keyword)" },
-  { tag: [t.string, t.special(t.string), t.character, t.regexp], color: "var(--cm-string)" },
-  { tag: [t.comment, t.lineComment, t.blockComment, t.docComment], color: "var(--cm-comment)", fontStyle: "italic" },
-  { tag: [t.number, t.integer, t.float, t.bool, t.null, t.atom], color: "var(--cm-number)" },
-  { tag: [t.typeName, t.className, t.namespace, t.macroName], color: "var(--cm-type)" },
-  { tag: [t.function(t.variableName), t.function(t.propertyName), t.definition(t.variableName)], color: "var(--cm-function)" },
-  { tag: [t.operator, t.punctuation, t.bracket, t.separator], color: "var(--cm-marker)" },
+  // Code tokens go through --wm-* variables: the writing theme maps them to
+  // the editor palette normally and to the preview's --hl-* palette inside
+  // fenced code blocks, which are drawn on the preview's dark slab.
+  { tag: t.labelName, color: "var(--wm-type)" },
+  { tag: [t.keyword, t.modifier, t.operatorKeyword, t.controlKeyword, t.definitionKeyword], color: "var(--wm-keyword)" },
+  { tag: [t.string, t.special(t.string), t.character, t.regexp], color: "var(--wm-string)" },
+  { tag: [t.comment, t.lineComment, t.blockComment, t.docComment], color: "var(--wm-comment)", fontStyle: "italic" },
+  { tag: [t.number, t.integer, t.float, t.bool, t.null, t.atom], color: "var(--wm-number)" },
+  { tag: [t.typeName, t.className, t.namespace, t.macroName], color: "var(--wm-type)" },
+  { tag: [t.function(t.variableName), t.function(t.propertyName), t.definition(t.variableName)], color: "var(--wm-function)" },
+  { tag: [t.operator, t.punctuation, t.bracket, t.separator], color: "var(--wm-punctuation)" },
 ]);
 
 // ---------------------------------------------------------------------------
