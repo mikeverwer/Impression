@@ -1,6 +1,6 @@
 [package]
 name = "impression"
-version = "1.3.0"
+version = "1.4.0"
 description = "Impression: a lightweight markdown editor with live print-style preview"
 authors = ["Mike Verwer"]
 edition = "2021"
