@@ -85,12 +85,18 @@ Chromium's print dialog adds date/title headers and footers by default. Untick "
 | Ctrl+Shift+O | Show / hide the outline |
 | Ctrl+Shift+C | Clean view (no gutter or status bar; enters writing mode, hides outline) |
 | Ctrl+Shift+E | Edit preview styles |
-| Ctrl+Shift+. / Ctrl+Shift+, | Editor font size up / down (also Ctrl+wheel over the editor; reset via View menu) |
+| Ctrl+Shift+. / Ctrl+Shift+, | Editor font size up / down (also Ctrl+wheel over the editor; reset via View menu). Ctrl with `=`, `-` or `0` can't be used for these: the webview reserves those combinations as browser zoom keys and never passes them to the app. |
 | Ctrl+Shift+] / Ctrl+Shift+[ | Preview zoom in / out (also Ctrl+wheel over the preview; reset via View menu) |
-
-Ctrl with `=`, `-` or `0` can't be used for these: the webview reserves those combinations as browser zoom keys and never passes them to the app.
 | Ctrl+W | Close tab |
 | Ctrl+Tab, Ctrl+Shift+Tab | Next / previous tab |
 | Ctrl+B / Ctrl+I | Toggle bold / italic |
 | Ctrl+F | Find in editor |
 | Right-click in preview | Copy, Select All, Jump to Source |
+
+
+
+## License
+
+Copyright (C) 2026 Mike Verwer
+
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version. See [LICENSE](LICENSE) for the full text. The bundled dependencies (Tauri, CodeMirror, markdown-it, KaTeX, Mermaid, highlight.js) remain under their own MIT, BSD and Apache licenses.

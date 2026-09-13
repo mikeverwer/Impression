@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Impression: a lightweight markdown editor with live print-style preview"
 authors = ["Mike Verwer"]
 edition = "2021"
+license = "AGPL-3.0-only"
 
 [lib]
 # The `_lib` suffix keeps the lib name distinct from the bin name on Windows.
