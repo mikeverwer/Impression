@@ -1,14 +1,13 @@
 # Impression
 
-Impression is a lightweight desktop markdown editor with a live print-style preview, built with Tauri v2 and vanilla JS.
+Impression is a lightweight desktop markdown editor with a live print-style preview, built with Tauri v2 and vanilla JS.  
+This tool was built with Claude Fable 5.1
 
 ## Toolchain
 
-- Rust (stable, MSVC) at `D:\Languages\Rust`
-- Node.js LTS (portable) at `D:\Languages\Node`
+- Rust (stable, MSVC)
+- Node.js LTS (portable)
 - Visual Studio C++ build tools and the WebView2 runtime
-
-Both `D:\Languages\Rust\cargo\bin` and `D:\Languages\Node` are on the user PATH; open a fresh terminal after install so it picks them up.
 
 ## Run
 
