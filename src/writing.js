@@ -226,8 +226,24 @@ const theme = EditorView.theme({
     "--wm-function": "var(--cm-function)",
     "--wm-punctuation": "var(--cm-marker)",
   },
-  ".cm-wm-h1": { borderBottom: "2px solid var(--color-accent)", paddingBottom: "0.1em", marginBottom: "0.4em" },
-  ".cm-wm-h2": { borderBottom: "1px solid var(--color-accent)", paddingBottom: "0.1em", marginBottom: "0.3em" },
+  // Heading rules are painted inside the line's horizontal padding (8px left,
+  // 24px right in the base theme) so they start exactly under the text.
+  ".cm-wm-h1": {
+    backgroundImage: "linear-gradient(var(--color-accent), var(--color-accent))",
+    backgroundRepeat: "no-repeat",
+    backgroundSize: "calc(100% - 32px) 2px",
+    backgroundPosition: "8px 100%",
+    paddingBottom: "0.15em",
+    marginBottom: "0.4em",
+  },
+  ".cm-wm-h2": {
+    backgroundImage: "linear-gradient(var(--color-accent), var(--color-accent))",
+    backgroundRepeat: "no-repeat",
+    backgroundSize: "calc(100% - 32px) 1px",
+    backgroundPosition: "8px 100%",
+    paddingBottom: "0.15em",
+    marginBottom: "0.3em",
+  },
   ".cm-wm-quote": { borderLeft: "3px solid var(--cm-list-mark)", paddingLeft: "12px" },
   ".cm-wm-bullet": { color: "var(--cm-list-mark)", fontWeight: "bold" },
   ".cm-wm-hr": {

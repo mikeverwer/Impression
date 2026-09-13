@@ -171,8 +171,9 @@ body.resizing-outline #outline { pointer-events: none; }
 
 /* ---------- Clean view: no gutter, no status bar ------------------ */
 
-body.clean-mode #editor-pane .cm-gutters { display: none; }
-body.clean-mode #editor-pane .cm-line { padding-left: 28px; }
+/* The gutter keeps its space so the text column doesn't move; only its
+   numbers and background disappear. */
+body.clean-mode #editor-pane .cm-gutters { visibility: hidden; }
 body.clean-mode #statusbar { display: none; }
 
 #outline-header {
