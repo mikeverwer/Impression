@@ -15,8 +15,10 @@
 
   #app, #workspace { display: block; height: auto; }
 
-  #preview-pane {
-    display: block;
+  /* Print even when the pane is collapsed (writing mode / preview toggled off). */
+  #preview-pane,
+  body.preview-hidden #preview-pane {
+    display: block !important;
     position: static;
     overflow: visible;
     height: auto;

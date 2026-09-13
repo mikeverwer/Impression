@@ -92,7 +92,10 @@ const fontTheme = (px) => EditorView.theme({ "&": { fontSize: `${px}px` } });
 // Writing mode (inline rendering) is only meaningful for markdown documents.
 const writingCompartment = new Compartment();
 let writingEnabled = false;
-const writingFor = (kind) => (writingEnabled && kind === "markdown" ? writingMode() : []);
+const writingFor = (kind) =>
+  writingEnabled && kind === "markdown"
+    ? [syntaxHighlighting(writingHighlightStyle), writingMode()]
+    : [syntaxHighlighting(highlightStyle)];
 
 const highlightStyle = HighlightStyle.define([
   // Markdown structure
@@ -119,6 +122,39 @@ const highlightStyle = HighlightStyle.define([
   { tag: [t.attributeName, t.propertyName], color: "var(--cm-type)" },
 
   // Tokens inside fenced code blocks (nested languages via language-data)
+  { tag: [t.keyword, t.modifier, t.operatorKeyword, t.controlKeyword, t.definitionKeyword], color: "var(--cm-keyword)" },
+  { tag: [t.string, t.special(t.string), t.character, t.regexp], color: "var(--cm-string)" },
+  { tag: [t.comment, t.lineComment, t.blockComment, t.docComment], color: "var(--cm-comment)", fontStyle: "italic" },
+  { tag: [t.number, t.integer, t.float, t.bool, t.null, t.atom], color: "var(--cm-number)" },
+  { tag: [t.typeName, t.className, t.namespace, t.macroName], color: "var(--cm-type)" },
+  { tag: [t.function(t.variableName), t.function(t.propertyName), t.definition(t.variableName)], color: "var(--cm-function)" },
+  { tag: [t.operator, t.punctuation, t.bracket, t.separator], color: "var(--cm-marker)" },
+]);
+
+// Writing mode uses the preview's tokens instead of the code-editor palette:
+// accent headings with the preview's scale, body-text colour, and monospace
+// only for code. Marker colours stay the same.
+const writingHighlightStyle = HighlightStyle.define([
+  { tag: t.heading1, color: "var(--color-accent)", fontWeight: "bold", fontSize: "2em" },
+  { tag: t.heading2, color: "var(--color-accent)", fontWeight: "bold", fontSize: "1.6em" },
+  { tag: t.heading3, color: "var(--color-accent)", fontWeight: "bold", fontSize: "1.35em" },
+  { tag: t.heading4, color: "var(--color-accent)", fontWeight: "bold", fontSize: "1.15em" },
+  { tag: [t.heading5, t.heading6], color: "var(--color-accent)", fontWeight: "bold" },
+  { tag: t.heading, color: "var(--color-accent)", fontWeight: "bold" },
+  { tag: t.strong, fontWeight: "bold" },
+  { tag: t.emphasis, fontStyle: "italic" },
+  { tag: t.strikethrough, textDecoration: "line-through" },
+  { tag: t.link, color: "var(--color-accent)", textDecoration: "underline" },
+  { tag: t.url, color: "var(--color-accent)" },
+  { tag: t.monospace, color: "var(--color-inline-code-text)", fontFamily: "var(--font-mono)" },
+  { tag: t.quote, color: "var(--color-quote-text)", fontStyle: "italic" },
+  { tag: t.processingInstruction, color: "var(--cm-marker)" },
+  { tag: [listMark, quoteMark], color: "var(--cm-list-mark)", fontWeight: "bold" },
+  { tag: t.contentSeparator, color: "var(--cm-marker)" },
+  { tag: t.escape, color: "var(--cm-marker)" },
+  { tag: t.labelName, color: "var(--cm-type)" },
+  { tag: t.tagName, color: "var(--cm-keyword)" },
+  { tag: [t.attributeName, t.propertyName], color: "var(--cm-type)" },
   { tag: [t.keyword, t.modifier, t.operatorKeyword, t.controlKeyword, t.definitionKeyword], color: "var(--cm-keyword)" },
   { tag: [t.string, t.special(t.string), t.character, t.regexp], color: "var(--cm-string)" },
   { tag: [t.comment, t.lineComment, t.blockComment, t.docComment], color: "var(--cm-comment)", fontStyle: "italic" },
@@ -234,7 +270,6 @@ export function createEditor({ parent, theme, keys = [], onUpdate }) {
     highlightActiveLine(),
     highlightSelectionMatches(),
     EditorView.lineWrapping,
-    syntaxHighlighting(highlightStyle),
     keymap.of([...keys, ...defaultKeymap, ...historyKeymap, ...searchKeymap, indentWithTab]),
     EditorView.updateListener.of((update) => onUpdate && onUpdate(update)),
   ];

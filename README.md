@@ -60,6 +60,10 @@ The preview (and the PDF) is styled by one stylesheet at a time. View > Preview 
 
 View > Writing Mode (Ctrl+Shift+W) collapses the preview and renders markdown inline in the editor, Obsidian-style: heading, emphasis, code, link and strikethrough markers are hidden, `>` becomes a quote bar, bullets become •, task markers become clickable checkboxes and `---` becomes a rule. The line under the cursor always shows its raw source. Fenced code, tables, math, images, footnotes and definition lists stay as source (the preview and PDF still render them). Turning the mode off restores the preview.
 
+Writing mode is drawn by the editor, not by the preview stylesheet, so it can't pick up arbitrary rules from `user_styles.css`. It does use the same design tokens (`--font-markdown`, `--color-accent`, `--color-body-text`, `--color-inline-code-text`), so overriding those in a user stylesheet changes both. Export to PDF works from writing mode; it renders the hidden preview for the print.
+
+Chromium's print dialog adds date/title headers and footers by default. Untick "Headers and footers" under More settings once; the app's WebView2 profile remembers the choice. There is no API to preset it.
+
 ## Shortcuts
 
 | Keys | Action |

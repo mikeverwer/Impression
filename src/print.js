@@ -7,27 +7,26 @@
 // Everything is restored after the dialog closes.
 
 export async function exportPdf({ preview, rerender, currentTheme }) {
+  // `preview` is the article element; every <details> inside it is forced
+  // open after the print render below.
   const root = document.documentElement;
   const previousTheme = root.dataset.theme;
-  const details = Array.from(preview.querySelectorAll("details"));
-  const wasOpen = details.map((d) => d.open);
   let restored = false;
 
   const restore = () => {
     if (restored) return;
     restored = true;
-    details.forEach((d, i) => (d.open = wasOpen[i]));
-    if (previousTheme !== "light") {
-      root.dataset.theme = previousTheme;
-      rerender(currentTheme());
-    }
+    if (previousTheme !== "light") root.dataset.theme = previousTheme;
+    // Re-render for the screen: restores the theme and closes the <details>
+    // that were forced open.
+    rerender(currentTheme());
   };
 
-  details.forEach((d) => (d.open = true));
-  if (previousTheme !== "light") {
-    root.dataset.theme = "light";
-    await rerender("light");
-  }
+  // Always re-render: the preview may be stale or empty if its pane is hidden
+  // (writing mode, or the preview toggled off).
+  if (previousTheme !== "light") root.dataset.theme = "light";
+  await rerender("light");
+  preview.querySelectorAll("details").forEach((d) => (d.open = true));
   // Let layout and any pending transitions settle before the snapshot.
   await new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 350)));
 

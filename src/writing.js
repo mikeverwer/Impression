@@ -68,6 +68,8 @@ const hidden = Decoration.replace({});
 const inlineCodeMark = Decoration.mark({ class: "cm-wm-inline-code" });
 const quoteLine = Decoration.line({ class: "cm-wm-quote" });
 const codeLine = Decoration.line({ class: "cm-wm-codeblock" });
+const h1Line = Decoration.line({ class: "cm-wm-h1" });
+const h2Line = Decoration.line({ class: "cm-wm-h2" });
 
 function buildDecorations(view) {
   const { state } = view;
@@ -112,6 +114,14 @@ function buildDecorations(view) {
         const parent = node.node.parent;
         const parentName = parent ? parent.name : "";
         switch (node.name) {
+          case "ATXHeading1":
+          case "SetextHeading1":
+            ranges.push(h1Line.range(doc.lineAt(node.from).from));
+            break;
+          case "ATXHeading2":
+          case "SetextHeading2":
+            ranges.push(h2Line.range(doc.lineAt(node.from).from));
+            break;
           case "HeaderMark":
             if (/^ATXHeading/.test(parentName)) hide(node.from, withSpace(node.to));
             else hide(node.from, node.to); // setext underline
@@ -191,7 +201,17 @@ const plugin = ViewPlugin.fromClass(
 );
 
 const theme = EditorView.theme({
-  ".cm-content": { maxWidth: "80ch", margin: "0 auto" },
+  // Prose in the preview's font and colour; code stays monospace.
+  ".cm-content": {
+    maxWidth: "80ch",
+    margin: "0 auto",
+    fontFamily: "var(--font-markdown)",
+    fontSize: "1.1em",
+    lineHeight: "1.6",
+    color: "var(--color-body-text)",
+  },
+  ".cm-wm-h1": { borderBottom: "2px solid var(--color-accent)", paddingBottom: "0.1em", marginBottom: "0.4em" },
+  ".cm-wm-h2": { borderBottom: "1px solid var(--color-accent)", paddingBottom: "0.1em", marginBottom: "0.3em" },
   ".cm-wm-quote": { borderLeft: "3px solid var(--cm-list-mark)", paddingLeft: "12px" },
   ".cm-wm-bullet": { color: "var(--cm-list-mark)", fontWeight: "bold" },
   ".cm-wm-hr": {
@@ -204,8 +224,14 @@ const theme = EditorView.theme({
     backgroundColor: "var(--cm-codeblock-bg)",
     borderRadius: "3px",
     padding: "0 3px",
+    fontFamily: "var(--font-mono)",
+    fontSize: "0.9em",
   },
-  ".cm-wm-codeblock": { backgroundColor: "var(--cm-codeblock-bg)" },
+  ".cm-wm-codeblock": {
+    backgroundColor: "var(--cm-codeblock-bg)",
+    fontFamily: "var(--font-mono)",
+    fontSize: "0.9em",
+  },
   ".cm-wm-check": {
     accentColor: "var(--cm-list-mark)",
     margin: "0 6px 0 0",

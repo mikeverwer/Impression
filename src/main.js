@@ -266,11 +266,14 @@ previewPane.addEventListener(
   { passive: false }
 );
 
-/** Render into the preview. Resolves when Mermaid/KaTeX are done. */
-async function renderNow(theme = currentTheme()) {
+/**
+ * Render into the preview. Resolves when Mermaid/KaTeX are done.
+ * `force` renders even while the pane is hidden (needed for printing).
+ */
+async function renderNow(theme = currentTheme(), force = false) {
   clearTimeout(renderTimer);
   if (!active) return;
-  if (!previewVisible) {
+  if (!previewVisible && !force) {
     // Skip the work while hidden; catch up when the pane is shown again.
     previewStale = true;
     updateWordCount();
@@ -529,7 +532,7 @@ const actions = {
   open: () => openFiles(),
   save: () => active && saveDoc(active),
   "save-as": () => active && saveDoc(active, true),
-  "export-pdf": () => exportPdf({ preview, rerender: renderNow, currentTheme }),
+  "export-pdf": () => exportPdf({ preview, rerender: (theme) => renderNow(theme, true), currentTheme }),
   "close-tab": () => active && closeDoc(active),
   quit: () => (tauriWindow ? tauriWindow.close() : window.close()),
   bold: () => toggleBold(view),
