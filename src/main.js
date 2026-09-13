@@ -478,8 +478,15 @@ function newDoc() {
   addDoc();
 }
 
-/** Open the bundled welcome document (reusing its tab if already open). */
+/**
+ * Open the bundled welcome document (reusing its tab if already open).
+ * Its tables, math and diagram only render in the preview, so it always
+ * shows in normal split view: clean view and writing mode off, preview on.
+ */
 function openWelcome(scrollToShortcuts = false) {
+  if (clean) setCleanMode(false);
+  if (writing) setWritingMode(false);
+  if (!previewVisible) setPreviewVisible(true);
   let doc = docs.find((d) => d.title === "Welcome");
   if (doc) activate(doc);
   else doc = addDoc({ text: welcomeText, title: "Welcome" });
@@ -890,19 +897,7 @@ if (isTauri) {
 // ---------------------------------------------------------------------------
 // Start
 
-// First launch opens the welcome document; afterwards a blank tab.
-const WELCOMED_KEY = "welcomed";
-let firstLaunch = false;
-try {
-  firstLaunch = !localStorage.getItem(WELCOMED_KEY);
-  localStorage.setItem(WELCOMED_KEY, "1");
-} catch {
-  /* ignore */
-}
-if (new URLSearchParams(location.search).has("sample")) addDoc({ text: sampleText });
-else if (firstLaunch) openWelcome();
-else newDoc();
-
+// Restore the saved layout first, so a document opened below can override it.
 try {
   if (localStorage.getItem(WRITING_KEY) === "1") setWritingMode(true, false);
 } catch {
@@ -921,6 +916,20 @@ try {
 } catch {
   /* ignore */
 }
+
+// First launch opens the welcome document (which forces the normal split
+// view); afterwards a blank tab in whatever layout was last used.
+const WELCOMED_KEY = "welcomed";
+let firstLaunch = false;
+try {
+  firstLaunch = !localStorage.getItem(WELCOMED_KEY);
+  localStorage.setItem(WELCOMED_KEY, "1");
+} catch {
+  /* ignore */
+}
+if (new URLSearchParams(location.search).has("sample")) addDoc({ text: sampleText });
+else if (firstLaunch) openWelcome();
+else newDoc();
 
 // Dev-only console hook for poking at the running app.
 if (import.meta.env.DEV) {

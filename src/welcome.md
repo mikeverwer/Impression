@@ -37,7 +37,7 @@ This document is a normal tab. Close it when you're done, or use it as a scratch
 **bold**, *italic*, ***both***, ~~strikethrough~~, `inline code`
 ```
 
-Typographer is on: "quotes", -- dashes, and ... become "quotes", -- dashes, and ...
+Typographer is on: `"quotes"`, `--` dashes, and `...` become "quotes", -- dashes, and ...
 
 ### Lists
 
